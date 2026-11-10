@@ -8,10 +8,16 @@ from scipy import ndimage as ndi
 sys.path.insert(0, 'Scripts')
 import Overlay_lib as OL
 
-def clean_mask(rgb):
+CUBE = {'front': (36, 284, 76, 326), 'back': (40, 284, 78, 326), 'left': (10, 252, 42, 286), 'right': (8, 252, 42, 286),
+        'top': (16, 300, 54, 342), 'bottom': (14, 306, 52, 346)}      # the scale cube of each panel, removed from the masks
+
+def clean_mask(rgb, cube=None):
     g = rgb.astype(float).mean(2); bg = np.median(g)
-    m = (g > bg + 9) | (g < bg - 30)
-    m = ndi.binary_closing(m, iterations=3); m = ndi.binary_opening(m, iterations=1); m = ndi.binary_fill_holes(m)
+    light = g > bg + 9
+    dark = ndi.binary_opening(g < bg - 14, iterations=2)       # a thin ground-shadow line does not survive the opening
+    m = light | dark
+    if cube: m[cube[1]:cube[3], cube[0]:cube[2]] = False
+    m = ndi.binary_closing(m, iterations=2); m = ndi.binary_fill_holes(m)
     lab, n = ndi.label(m); sizes = ndi.sum(m, lab, range(1, n + 1))
     return lab == (int(np.argmax(sizes)) + 1)
 
@@ -19,7 +25,7 @@ def ref_masks():
     cal = json.load(open('Out/calibration.json')); sheet = np.asarray(Image.open('Ref/Car6Views.png').convert('RGB'))
     out = {}
     for name, c in cal.items():
-        x0, y0, x1, y1 = c['panel']; out[name] = clean_mask(sheet[y0:y1, x0:x1])
+        x0, y0, x1, y1 = c['panel']; out[name] = clean_mask(sheet[y0:y1, x0:x1], CUBE.get(name))
     return out
 
 def contour(m): return m & ~ndi.binary_erosion(m)

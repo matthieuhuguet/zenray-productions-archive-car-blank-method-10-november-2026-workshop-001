@@ -1,0 +1,31 @@
+# 10 November 2026 16:55 - each reference panel was scaled and placed on its own: fit (a, ox, oy) per view on the model,
+# the left side view staying the world definition. Optional perspective for front and back (--persp).
+# usage: python3 Scripts/FitViews.py Spec/V_xxx.json [--persp] -> rewrites Spec/Views.json, prints IoU before/after
+import json, sys
+import numpy as np
+from scipy.optimize import minimize
+sys.path.insert(0, 'Scripts')
+import Overlay_lib as OL, Score, Model
+spec = json.load(open(sys.argv[1])); views = json.load(open('Spec/Views.json')); refs = Score.ref_masks()
+parts = Model.shell_parts(spec, 2, 2)
+def iou(name, v):
+    mm = OL.parts_mask(parts, v, refs[name].shape); return (refs[name] & mm).sum() / (refs[name] | mm).sum()
+for name in ['right', 'top', 'bottom', 'front', 'back']:
+    v0 = dict(views[name]); keys = ['a', 'ox', 'oy'] + (['persp'] if ('--persp' in sys.argv and name in ('front', 'back')) else [])
+    if 'persp' in keys:
+        v0.setdefault('persp', 0.0003); v0['d0'] = 0.0 if name == 'front' else 552.0; v0.setdefault('zc', 0.0)
+    x0 = np.array([v0[k] for k in keys]); scale = np.array([0.02, 2.0, 2.0, 0.0003][:len(keys)])
+    def f(x):
+        v = dict(v0)
+        for k, val in zip(keys, x0 + x * scale): v[k] = float(val)
+        if v.get('persp', 0) < 0: return 1.0
+        return 1.0 - iou(name, v)
+    best = None
+    for start in (np.zeros(len(keys)),):
+        r = minimize(f, start, method='Powell', options={'xtol': 0.05, 'ftol': 1e-5, 'maxfev': 400})
+        if best is None or r.fun < best.fun: best = r
+    before = iou(name, views[name])
+    for k, val in zip(keys, x0 + best.x * scale): v0[k] = round(float(val), 5)
+    views[name] = v0
+    print(name, 'iou', round(before, 4), '->', round(1 - best.fun, 4), {k: v0[k] for k in keys})
+json.dump(views, open('Spec/Views.json', 'w'), indent=1)

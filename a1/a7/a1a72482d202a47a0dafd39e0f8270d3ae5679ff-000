@@ -1,7 +1,57 @@
-{"_doc": "10 November 2026 - per-view calibration: a = pixels per wu, (ox, oy) = pixel of the world origin axis, sx/sy = which world axis goes to image x/y and its sign, cam = axis the camera sits on",
- "left":   {"a": 1.0,    "ox": 45.0,  "oy": 283.0, "h": "x+", "v": "z", "cam": "y+"},
- "right":  {"a": 1.0215, "ox": 581.0, "oy": 283.0, "h": "x-", "v": "z", "cam": "y-"},
- "top":    {"a": 0.9856, "ox": 52.0,  "oy": 199.5, "h": "x+", "v": "y", "cam": "z+"},
- "bottom": {"a": 0.973,  "ox": 576.0, "oy": 200.5, "h": "x-", "v": "y", "cam": "z-"},
- "front":  {"a": 1.393,  "ox": 322.0, "oy": 325.0, "h": "y-", "v": "z", "cam": "x-"},
- "back":   {"a": 1.438,  "ox": 312.5, "oy": 325.0, "h": "y+", "v": "z", "cam": "x+"}}
+{
+ "_doc": "10 November 2026 - per-view calibration: a = pixels per wu, (ox, oy) = pixel of the world origin axis, sx/sy = which world axis goes to image x/y and its sign, cam = axis the camera sits on",
+ "left": {
+  "a": 1.0,
+  "ox": 45.0,
+  "oy": 283.0,
+  "h": "x+",
+  "v": "z",
+  "cam": "y+"
+ },
+ "right": {
+  "a": 0.99125,
+  "ox": 577.28066,
+  "oy": 281.25375,
+  "h": "x-",
+  "v": "z",
+  "cam": "y-"
+ },
+ "top": {
+  "a": 0.97111,
+  "ox": 53.87995,
+  "oy": 199.529,
+  "h": "x+",
+  "v": "y",
+  "cam": "z+"
+ },
+ "bottom": {
+  "a": 0.96487,
+  "ox": 575.71558,
+  "oy": 198.11588,
+  "h": "x-",
+  "v": "y",
+  "cam": "z-"
+ },
+ "front": {
+  "a": 1.41994,
+  "ox": 322.2481,
+  "oy": 331.99379,
+  "h": "y-",
+  "v": "z",
+  "cam": "x-",
+  "persp": 3e-05,
+  "d0": 0.0,
+  "zc": 0.0
+ },
+ "back": {
+  "a": 1.48963,
+  "ox": 312.49967,
+  "oy": 325.94108,
+  "h": "y+",
+  "v": "z",
+  "cam": "x+",
+  "persp": 0.0003,
+  "d0": 552.0,
+  "zc": 0.0
+ }
+}
