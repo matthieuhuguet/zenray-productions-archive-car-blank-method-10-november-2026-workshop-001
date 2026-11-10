@@ -2,7 +2,7 @@
 # usage: python3 Scripts/Compose.py V_001 [wire] -> Sheets/compare_<ver>[_wire].png
 import json, sys
 from PIL import Image, ImageDraw
-ver = sys.argv[1]; suf = '_wire' if len(sys.argv) > 2 else ''
+ver = sys.argv[1]; suf = ('_' + sys.argv[2]) if len(sys.argv) > 2 else ''
 cal = json.load(open('Out/calibration.json'))
 ref = Image.open('Ref/Car6Views.png').convert('RGB')
 mod = Image.new('RGB', ref.size, (32, 33, 36))

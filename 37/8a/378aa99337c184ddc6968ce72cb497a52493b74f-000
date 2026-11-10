@@ -39,12 +39,21 @@ def revolve(profile, n, closed=True):
             F.append([i * n + k, i * n + k2, j * n + k2, j * n + k])
     return V, F
 
-def tyre(R, rim, width, n=24):
-    w = width / 2.0; s = min(6.0, (R - rim) * 0.5)
-    prof = [(rim, w - 2), (rim + 3, w), (R - s, w), (R, w - s), (R, 0.0), (R, -w + s), (R - s, -w), (rim + 3, -w), (rim, -w + 2), (rim - 1.5, 0.0)]
+def tyre(R, rim, width, n=48, grooves=3, groove_w=1.6, groove_d=1.2):
+    """Closed tyre ring: bead, sidewall, shoulder, tread with circumferential grooves (they are part of the profile)."""
+    w = width / 2.0; s = min(5.0, (R - rim) * 0.5); tread = w - s
+    prof = [(rim, w - 2), (rim + 3, w), (R - s - 2, w + 0.8), (R - s, w), (R, tread)]
+    for g in range(grooves):
+        c = tread - (2 * tread) * (g + 1) / (grooves + 1)
+        prof += [(R, c + groove_w / 2 + 0.3), (R - groove_d, c + groove_w / 2), (R - groove_d, c - groove_w / 2), (R, c - groove_w / 2 - 0.3)]
+    prof += [(R, -tread), (R - s, -w), (R - s - 2, -w - 0.8), (rim + 3, -w), (rim, -w + 2), (rim - 1.5, 0.0)]
     return revolve(prof, n, closed=True)
 
-def rim(rim_r, width, spokes=6, spoke_w=8.5, hub_r=9.0, cap_r=5.5, depth=7.0, n_per=4):
+def brake_disc(rim_r, width, n=48):
+    w = width / 2.0
+    return revolve([(rim_r * 0.30, w - 12.0), (rim_r * 0.80, w - 12.0), (rim_r * 0.80, w - 14.5), (rim_r * 0.30, w - 14.5)], n, closed=True)
+
+def rim(rim_r, width, spokes=6, spoke_w=7.5, hub_r=9.0, cap_r=5.5, depth=7.0, n_per=8):
     """Closed rim: front face with recessed windows between spokes, barrel, back cap."""
     n = spokes * n_per; w = width / 2.0 - 3.0     # face sits 3 wu inside the tyre wall
     r_sp = rim_r - 5.0                            # where spokes meet the outer ring
@@ -53,7 +62,8 @@ def rim(rim_r, width, spokes=6, spoke_w=8.5, hub_r=9.0, cap_r=5.5, depth=7.0, n_
         sec, t = divmod(k, n_per); base = math.pi / 2 + 2 * math.pi * sec / spokes
         d = math.asin(min(0.95, spoke_w / 2.0 / max(r, spoke_w / 2.0 / 0.95)))
         step = 2 * math.pi / spokes
-        return base + [-d, d, step * 0.5 - 0.0, step - d][t] if t != 2 else base + step * 0.5
+        if t == 0: return base - d
+        return base + d + (step - 2 * d) * (t - 1) / (n_per - 1)       # t = 1 is the other spoke edge, the rest spans the window
     def ring(r, y, fixed=False):
         i0 = len(V)
         for k in range(n):

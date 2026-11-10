@@ -1,0 +1,40 @@
+# 10 November 2026 17:15 - small parametric all-quad parts that are not carried by the body lattice (splitter, struts, fins...).
+import numpy as np
+def box(x0, x1, y0, y1, z0, z1, nx=1, ny=1, nz=1, shear=None):
+    """Closed all-quad box with nx*ny*nz cells on its faces. shear = function(p)->p applied to every vertex."""
+    idx = {}; V = []; F = []
+    def vid(i, j, k):
+        if (i, j, k) not in idx:
+            p = np.array([x0 + (x1 - x0) * i / nx, y0 + (y1 - y0) * j / ny, z0 + (z1 - z0) * k / nz])
+            idx[(i, j, k)] = len(V); V.append(shear(p) if shear else p)
+        return idx[(i, j, k)]
+    for i in range(nx):
+        for j in range(ny):
+            F.append([vid(i, j, 0), vid(i, j + 1, 0), vid(i + 1, j + 1, 0), vid(i + 1, j, 0)])
+            F.append([vid(i, j, nz), vid(i + 1, j, nz), vid(i + 1, j + 1, nz), vid(i, j + 1, nz)])
+    for i in range(nx):
+        for k in range(nz):
+            F.append([vid(i, 0, k), vid(i + 1, 0, k), vid(i + 1, 0, k + 1), vid(i, 0, k + 1)])
+            F.append([vid(i, ny, k), vid(i, ny, k + 1), vid(i + 1, ny, k + 1), vid(i + 1, ny, k)])
+    for j in range(ny):
+        for k in range(nz):
+            F.append([vid(0, j, k), vid(0, j, k + 1), vid(0, j + 1, k + 1), vid(0, j + 1, k)])
+            F.append([vid(nx, j, k), vid(nx, j + 1, k), vid(nx, j + 1, k + 1), vid(nx, j, k + 1)])
+    return np.array(V), F
+
+def extras(spec):
+    """Parts described in spec['extras'] : list of {name, kind:'box', bounds:[x0,x1,y0,y1,z0,z1], n:[nx,ny,nz], mirror:bool, taper...}"""
+    import Build
+    out = {}
+    for e in spec.get('extras', []):
+        b = e['bounds']; n = e.get('n', [1, 1, 1])
+        def shear(p, e=e, b=b):
+            q = p.copy(); u = (p[0] - b[0]) / max(b[1] - b[0], 1e-9); w = abs(p[1]) / max(abs(b[2]), abs(b[3]), 1e-9); t = (p[2] - b[4]) / max(b[5] - b[4], 1e-9)
+            q[0] += e.get('sweep', 0.0) * w * w * (1 - u) + e.get('rake', 0.0) * t     # sweep: front edge curves back at the tips ; rake: top leans back
+            q[2] += e.get('tip_rise', 0.0) * w ** 4
+            return q
+        for sgn in ((1, -1) if e.get('mirror') else (1,)):
+            V, F = box(b[0], b[1], b[2], b[3], b[4], b[5], *n, shear=shear)
+            V = V * [1, sgn, 1]; F, _ = Build.orient_outward(V, F)
+            out[e['name'] + ('' if not e.get('mirror') else ('_L' if sgn > 0 else '_R'))] = {'verts': V, 'faces': F, 'mat': e.get('mat', 'splitter')}
+    return out

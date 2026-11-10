@@ -1,0 +1,1 @@
+{"front": {"iou": 0.9384, "contour_px": 3.73}, "back": {"iou": 0.9471, "contour_px": 2.85}, "left": {"iou": 0.9532, "contour_px": 2.16}, "right": {"iou": 0.9533, "contour_px": 2.27}, "top": {"iou": 0.9817, "contour_px": 1.53}, "bottom": {"iou": 0.9617, "contour_px": 3.15}, "mean_iou": 0.9559}

@@ -1,0 +1,14 @@
+# 10 November 2026 18:20 - V_006 = V_005 + tail plan shape from the measured top-view rows (corners swept forward), rear lip tucked in.
+import json
+s = json.load(open('Spec/V_005.json')); P = s['points']
+def put(st, pts):
+    for r, v in pts.items(): P[f'{st},{r}'] = [float(c) for c in v]
+put(17, {0: (553, 0, 117), 1: (553, 35, 117), 2: (551.5, 71, 117), 3: (542, 104, 117), 4: (537, 111, 116.5), 5: (538, 115, 106), 6: (539, 118, 90), 7: (538, 118, 64), 8: (535, 114, 33),
+         9: (541, 92, 31), 10: (545, 61, 30), 11: (547, 31, 30), 12: (547, 0, 30)})
+for k, y in (('16,6', 126.0), ('16,7', 120.0), ('16,8', 117.0), ('15,6', 131.0)): P[k][1] = y
+s['rear_centre'] = [[551, 0, 107], [550, 0, 83], [547.5, 0, 59]]
+for e in s['extras']:
+    if e['name'] == 'rear_valance': e['bounds'] = [528, 541, -100, 100, 18, 34]
+    if e['name'] == 'rear_fin': e['bounds'] = [528, 541, 98, 104, 26, 60]
+s['meta']['version'] = 'V_006'
+json.dump(s, open('Spec/V_006.json', 'w'), indent=0)

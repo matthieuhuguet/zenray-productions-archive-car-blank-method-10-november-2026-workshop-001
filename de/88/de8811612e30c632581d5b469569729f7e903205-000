@@ -1,0 +1,854 @@
+{
+ "total": {
+  "verts": 19006,
+  "faces": 17954,
+  "quads": 17954,
+  "tris": 0,
+  "ngons": 0,
+  "boundary_edges": 1984,
+  "nonmanifold_edges": 0,
+  "parts": 52,
+  "max_valence": 5
+ },
+ "parts": {
+  "hood": {
+   "verts": 353,
+   "faces": 320,
+   "edges": 672,
+   "quads": 320,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 64,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 68,
+    "4": 285
+   },
+   "unused_verts": 0
+  },
+  "front_fender_L": {
+   "verts": 573,
+   "faces": 520,
+   "edges": 1092,
+   "quads": 520,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 104,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 111,
+    "4": 459,
+    "5": 3
+   },
+   "unused_verts": 0
+  },
+  "front_fender_R": {
+   "verts": 573,
+   "faces": 520,
+   "edges": 1092,
+   "quads": 520,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 104,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 111,
+    "4": 459,
+    "5": 3
+   },
+   "unused_verts": 0
+  },
+  "front_bumper": {
+   "verts": 897,
+   "faces": 832,
+   "edges": 1728,
+   "quads": 832,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 128,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 134,
+    "4": 761,
+    "5": 2
+   },
+   "unused_verts": 0
+  },
+  "underbody": {
+   "verts": 2037,
+   "faces": 1920,
+   "edges": 3956,
+   "quads": 1920,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 232,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "2": 12,
+    "3": 212,
+    "4": 1813
+   },
+   "unused_verts": 0
+  },
+  "glass_windshield": {
+   "verts": 353,
+   "faces": 320,
+   "edges": 672,
+   "quads": 320,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 64,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 68,
+    "4": 285
+   },
+   "unused_verts": 0
+  },
+  "greenhouse_frame_L": {
+   "verts": 265,
+   "faces": 224,
+   "edges": 488,
+   "quads": 224,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 80,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 84,
+    "4": 181
+   },
+   "unused_verts": 0
+  },
+  "greenhouse_frame_R": {
+   "verts": 265,
+   "faces": 224,
+   "edges": 488,
+   "quads": 224,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 80,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 84,
+    "4": 181
+   },
+   "unused_verts": 0
+  },
+  "glass_side_a_L": {
+   "verts": 69,
+   "faces": 56,
+   "edges": 124,
+   "quads": 56,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 24,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 28,
+    "4": 41
+   },
+   "unused_verts": 0
+  },
+  "glass_side_a_R": {
+   "verts": 69,
+   "faces": 56,
+   "edges": 124,
+   "quads": 56,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 24,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 28,
+    "4": 41
+   },
+   "unused_verts": 0
+  },
+  "door_L": {
+   "verts": 277,
+   "faces": 248,
+   "edges": 524,
+   "quads": 248,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 56,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 60,
+    "4": 217
+   },
+   "unused_verts": 0
+  },
+  "door_R": {
+   "verts": 277,
+   "faces": 248,
+   "edges": 524,
+   "quads": 248,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 56,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 60,
+    "4": 217
+   },
+   "unused_verts": 0
+  },
+  "roof": {
+   "verts": 277,
+   "faces": 248,
+   "edges": 524,
+   "quads": 248,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 56,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 60,
+    "4": 217
+   },
+   "unused_verts": 0
+  },
+  "glass_side_b_L": {
+   "verts": 69,
+   "faces": 56,
+   "edges": 124,
+   "quads": 56,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 24,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 28,
+    "4": 41
+   },
+   "unused_verts": 0
+  },
+  "glass_side_b_R": {
+   "verts": 69,
+   "faces": 56,
+   "edges": 124,
+   "quads": 56,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 24,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 28,
+    "4": 41
+   },
+   "unused_verts": 0
+  },
+  "glass_side_c_L": {
+   "verts": 69,
+   "faces": 56,
+   "edges": 124,
+   "quads": 56,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 24,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 28,
+    "4": 41
+   },
+   "unused_verts": 0
+  },
+  "glass_side_c_R": {
+   "verts": 69,
+   "faces": 56,
+   "edges": 124,
+   "quads": 56,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 24,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 28,
+    "4": 41
+   },
+   "unused_verts": 0
+  },
+  "rear_quarter_L": {
+   "verts": 537,
+   "faces": 480,
+   "edges": 1016,
+   "quads": 480,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 112,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 120,
+    "4": 413,
+    "5": 4
+   },
+   "unused_verts": 0
+  },
+  "rear_quarter_R": {
+   "verts": 537,
+   "faces": 480,
+   "edges": 1016,
+   "quads": 480,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 112,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 120,
+    "4": 413,
+    "5": 4
+   },
+   "unused_verts": 0
+  },
+  "glass_rear": {
+   "verts": 353,
+   "faces": 320,
+   "edges": 672,
+   "quads": 320,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 64,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 68,
+    "4": 285
+   },
+   "unused_verts": 0
+  },
+  "rear_deck": {
+   "verts": 377,
+   "faces": 336,
+   "edges": 712,
+   "quads": 336,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 80,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 84,
+    "4": 293
+   },
+   "unused_verts": 0
+  },
+  "wheelwell_front_L": {
+   "verts": 285,
+   "faces": 256,
+   "edges": 540,
+   "quads": 256,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 56,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "2": 2,
+    "3": 56,
+    "4": 227
+   },
+   "unused_verts": 0
+  },
+  "wheelwell_front_R": {
+   "verts": 285,
+   "faces": 256,
+   "edges": 540,
+   "quads": 256,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 56,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "2": 2,
+    "3": 56,
+    "4": 227
+   },
+   "unused_verts": 0
+  },
+  "wheelwell_rear_L": {
+   "verts": 285,
+   "faces": 256,
+   "edges": 540,
+   "quads": 256,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 56,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "2": 2,
+    "3": 56,
+    "4": 227
+   },
+   "unused_verts": 0
+  },
+  "wheelwell_rear_R": {
+   "verts": 285,
+   "faces": 256,
+   "edges": 540,
+   "quads": 256,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 56,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "2": 2,
+    "3": 56,
+    "4": 227
+   },
+   "unused_verts": 0
+  },
+  "rear_fascia": {
+   "verts": 560,
+   "faces": 480,
+   "edges": 1040,
+   "quads": 480,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 160,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "3": 164,
+    "4": 392,
+    "5": 4
+   },
+   "unused_verts": 0
+  },
+  "rear_panel": {
+   "verts": 289,
+   "faces": 256,
+   "edges": 544,
+   "quads": 256,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 64,
+   "nonmanifold_edges": 0,
+   "euler": 1,
+   "valence_hist": {
+    "3": 68,
+    "4": 221
+   },
+   "unused_verts": 0
+  },
+  "tyre_front_L": {
+   "verts": 1104,
+   "faces": 1104,
+   "edges": 2208,
+   "quads": 1104,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 1104
+   },
+   "unused_verts": 0
+  },
+  "rim_front_L": {
+   "verts": 674,
+   "faces": 672,
+   "edges": 1344,
+   "quads": 672,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 32,
+    "4": 618,
+    "5": 24
+   },
+   "unused_verts": 0
+  },
+  "brake_front_L": {
+   "verts": 192,
+   "faces": 192,
+   "edges": 384,
+   "quads": 192,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 192
+   },
+   "unused_verts": 0
+  },
+  "tyre_front_R": {
+   "verts": 1104,
+   "faces": 1104,
+   "edges": 2208,
+   "quads": 1104,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 1104
+   },
+   "unused_verts": 0
+  },
+  "rim_front_R": {
+   "verts": 674,
+   "faces": 672,
+   "edges": 1344,
+   "quads": 672,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 32,
+    "4": 618,
+    "5": 24
+   },
+   "unused_verts": 0
+  },
+  "brake_front_R": {
+   "verts": 192,
+   "faces": 192,
+   "edges": 384,
+   "quads": 192,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 192
+   },
+   "unused_verts": 0
+  },
+  "tyre_rear_L": {
+   "verts": 1104,
+   "faces": 1104,
+   "edges": 2208,
+   "quads": 1104,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 1104
+   },
+   "unused_verts": 0
+  },
+  "rim_rear_L": {
+   "verts": 674,
+   "faces": 672,
+   "edges": 1344,
+   "quads": 672,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 32,
+    "4": 618,
+    "5": 24
+   },
+   "unused_verts": 0
+  },
+  "brake_rear_L": {
+   "verts": 192,
+   "faces": 192,
+   "edges": 384,
+   "quads": 192,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 192
+   },
+   "unused_verts": 0
+  },
+  "tyre_rear_R": {
+   "verts": 1104,
+   "faces": 1104,
+   "edges": 2208,
+   "quads": 1104,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 1104
+   },
+   "unused_verts": 0
+  },
+  "rim_rear_R": {
+   "verts": 674,
+   "faces": 672,
+   "edges": 1344,
+   "quads": 672,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 32,
+    "4": 618,
+    "5": 24
+   },
+   "unused_verts": 0
+  },
+  "brake_rear_R": {
+   "verts": 192,
+   "faces": 192,
+   "edges": 384,
+   "quads": 192,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 192
+   },
+   "unused_verts": 0
+  },
+  "splitter": {
+   "verts": 170,
+   "faces": 168,
+   "edges": 336,
+   "quads": 168,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 162
+   },
+   "unused_verts": 0
+  },
+  "strut_c": {
+   "verts": 12,
+   "faces": 10,
+   "edges": 20,
+   "quads": 10,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 4
+   },
+   "unused_verts": 0
+  },
+  "strut_a_L": {
+   "verts": 12,
+   "faces": 10,
+   "edges": 20,
+   "quads": 10,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 4
+   },
+   "unused_verts": 0
+  },
+  "strut_a_R": {
+   "verts": 12,
+   "faces": 10,
+   "edges": 20,
+   "quads": 10,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 4
+   },
+   "unused_verts": 0
+  },
+  "strut_b_L": {
+   "verts": 12,
+   "faces": 10,
+   "edges": 20,
+   "quads": 10,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 4
+   },
+   "unused_verts": 0
+  },
+  "strut_b_R": {
+   "verts": 12,
+   "faces": 10,
+   "edges": 20,
+   "quads": 10,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 4
+   },
+   "unused_verts": 0
+  },
+  "rear_valance": {
+   "verts": 138,
+   "faces": 136,
+   "edges": 272,
+   "quads": 136,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 130
+   },
+   "unused_verts": 0
+  },
+  "intake_wall": {
+   "verts": 78,
+   "faces": 76,
+   "edges": 152,
+   "quads": 76,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 70
+   },
+   "unused_verts": 0
+  },
+  "side_marker_L": {
+   "verts": 16,
+   "faces": 14,
+   "edges": 28,
+   "quads": 14,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 8
+   },
+   "unused_verts": 0
+  },
+  "side_marker_R": {
+   "verts": 16,
+   "faces": 14,
+   "edges": 28,
+   "quads": 14,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 8
+   },
+   "unused_verts": 0
+  },
+  "under_plate": {
+   "verts": 234,
+   "faces": 232,
+   "edges": 464,
+   "quads": 232,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 226
+   },
+   "unused_verts": 0
+  },
+  "rear_fin_L": {
+   "verts": 30,
+   "faces": 28,
+   "edges": 56,
+   "quads": 28,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 22
+   },
+   "unused_verts": 0
+  },
+  "rear_fin_R": {
+   "verts": 30,
+   "faces": 28,
+   "edges": 56,
+   "quads": 28,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 8,
+    "4": 22
+   },
+   "unused_verts": 0
+  }
+ }
+}

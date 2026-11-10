@@ -1,10 +1,10 @@
 #!/bin/zsh
-# 10 November 2026 14:40 - one command for one iteration: spec -> cage -> metrics -> Blender render -> compare sheet.
-# usage: Scripts/Run.sh V_001
+# 10 November 2026 18:30 - one iteration: spec -> final mesh (no modifier) -> score -> Blender render -> compare sheet.
+# usage: Scripts/Run.sh V_006 [shell|components]
 set -e
 cd "$(dirname "$0")/.."
-VER=$1
-python3 Scripts/Export.py Spec/$VER.json
-python3 Scripts/Overlay.py Spec/$VER.json
+VER=$1; MODE=${2:-shell}
+python3 Scripts/Export2.py Spec/$VER.json $MODE
+python3 Scripts/Score.py Spec/$VER.json --sheet
 /Applications/Blender.app/Contents/MacOS/Blender -b -P Scripts/BlenderSheet.py -- Out/car_$VER.json 2 2>&1 | grep -E "RENDER_DONE|Error|rror:" || true
 python3 Scripts/Compose.py $VER

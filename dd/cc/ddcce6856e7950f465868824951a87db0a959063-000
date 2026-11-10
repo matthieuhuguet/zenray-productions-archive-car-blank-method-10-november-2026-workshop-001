@@ -1,0 +1,24 @@
+# 10 November 2026 19:20 - how consistent is the reference with itself? An orthographic silhouette seen from two opposite
+# sides is the same shape mirrored. IoU(view, mirrored opposite view) after the best scale + shift is therefore the ceiling
+# that ANY single 3D object can reach on that pair: no model can match two silhouettes that disagree.
+import json, sys
+import numpy as np
+from scipy import ndimage as ndi
+from scipy.optimize import minimize
+sys.path.insert(0, 'Scripts')
+import Score
+refs = Score.ref_masks(); out = {}
+for a, b in (('left', 'right'), ('top', 'bottom'), ('front', 'back')):
+    A = refs[a]; B = refs[b][:, ::-1]
+    h = min(A.shape[0], B.shape[0]); w = min(A.shape[1], B.shape[1]); A = A[:h, :w]; B = B[:h, :w].astype(float)
+    ca = np.array(ndi.center_of_mass(A)); cb = np.array(ndi.center_of_mass(B))
+    def warp(x):
+        s = 1 + x[0] * 0.02; t = np.array([x[1], x[2]]) * 3
+        # output pixel p maps to input pixel (p - ca - t)/s + cb
+        return ndi.affine_transform(B, np.eye(2) / s, offset=cb - (ca + t) / s, order=1) > 0.5
+    def f(x):
+        W_ = warp(x); return 1 - (A & W_).sum() / (A | W_).sum()
+    r = minimize(f, np.zeros(3), method='Powell', options={'xtol': 0.02, 'ftol': 1e-6})
+    iou = 1 - r.fun; out[f'{a}|{b}'] = {'pair_iou': round(float(iou), 4), 'ceiling_mean_iou': round(float((1 + iou) / 2), 4)}
+out['ceiling_all_views'] = round(float(np.mean([v['ceiling_mean_iou'] for v in out.values()])), 4)
+json.dump(out, open('Out/ref_consistency.json', 'w'), indent=1); print(json.dumps(out))

@@ -6,18 +6,19 @@ from mathutils import Vector, Matrix
 
 argv = sys.argv[sys.argv.index('--') + 1:]
 src = argv[0]; ZOOM = float(argv[1]) if len(argv) > 1 else 2.0
-WIRE = len(argv) > 2 and argv[2] == 'wire'
+WIRE = False; COLORS = len(argv) > 2 and argv[2] == 'colors'   # 10 November 2026 20:00 - 'colors' = one flat colour per component
 data = json.load(open(src)); k = data['scale']; ver = data['version']
 views = json.load(open('Spec/Views.json')); cal = json.load(open('Out/calibration.json'))
-COL = {'body': (0.62, 0.63, 0.65, 1), 'glass_windshield': (0.47, 0.48, 0.50, 1), 'glass_side': (0.40, 0.41, 0.43, 1), 'glass_roofglass': (0.36, 0.37, 0.39, 1),
-       'wheelwell': (0.10, 0.10, 0.11, 1), 'panel_dark': (0.36, 0.37, 0.39, 1), 'splitter': (0.42, 0.43, 0.45, 1), 'tyre': (0.20, 0.20, 0.21, 1), 'rim': (0.50, 0.51, 0.53, 1)}
+COL = {'glass': (0.40, 0.41, 0.43, 1), 'underbody': (0.45, 0.46, 0.48, 1), 'wheelwell_front': (0.12, 0.12, 0.13, 1), 'wheelwell_rear': (0.12, 0.12, 0.13, 1), 'rear_panel': (0.36, 0.37, 0.39, 1),
+       'body': (0.62, 0.63, 0.65, 1), 'glass_windshield': (0.47, 0.48, 0.50, 1), 'glass_side': (0.40, 0.41, 0.43, 1), 'glass_roofglass': (0.36, 0.37, 0.39, 1),
+       'wheelwell': (0.10, 0.10, 0.11, 1), 'panel_dark': (0.36, 0.37, 0.39, 1), 'splitter': (0.42, 0.43, 0.45, 1), 'tyre': (0.27, 0.27, 0.28, 1), 'rim': (0.52, 0.53, 0.55, 1), 'brake': (0.33, 0.33, 0.35, 1)}
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 mats = {}
 def mat(name):
     if name not in mats:
-        m = bpy.data.materials.new(name); m.diffuse_color = COL.get(name, (0.6, 0.6, 0.6, 1)); mats[name] = m
+        m = bpy.data.materials.new(name); m.diffuse_color = COL.get(name, (0.62, 0.63, 0.65, 1)); mats[name] = m
     return mats[name]
 
 for pname, p in data['parts'].items():
@@ -42,12 +43,18 @@ for pname, p in data['parts'].items():
     ob = bpy.data.objects.new(pname, me); scene.collection.objects.link(ob)
     if p.get('subdiv', 0):
         md = ob.modifiers.new('Subdivision', 'SUBSURF'); md.levels = p['subdiv']; md.render_levels = p['subdiv']
-    bpy.context.view_layer.objects.active = ob; ob.select_set(True)
-    try:
-        bpy.ops.object.shade_auto_smooth(angle=math.radians(28))
-    except Exception as ex:
-        print('auto smooth failed', ex)
-    ob.select_set(False)
+    if p.get('sharp') is not None and not p.get('subdiv', 0):
+        # no modifier at all: smooth faces + explicit sharp edges (crease lines and panel borders)
+        sh = {tuple(sorted(e)) for e in p['sharp']}
+        if 'sharp_edge' not in me.attributes: me.attributes.new('sharp_edge', 'BOOLEAN', 'EDGE')
+        me.attributes['sharp_edge'].data.foreach_set('value', [tuple(sorted(e.vertices)) in sh for e in me.edges])
+    else:
+        bpy.context.view_layer.objects.active = ob; ob.select_set(True)
+        try:
+            bpy.ops.object.shade_auto_smooth(angle=math.radians(16 if not p.get('subdiv', 0) else 28))
+        except Exception as ex:
+            print('auto smooth failed', ex)
+        ob.select_set(False)
 
 # ground plane to catch nothing: keep the flat grey background of the reference
 scene.render.engine = 'BLENDER_WORKBENCH'
@@ -65,6 +72,14 @@ if WIRE:
         if ob.type == 'MESH': ob.show_wire = True
     scene.display.shading.show_object_outline = False
 
+if COLORS:
+    import colorsys, hashlib
+    sh.color_type = 'OBJECT'
+    for ob in scene.objects:
+        if ob.type == 'MESH':
+            base = ob.name.rsplit('_', 1)[0] if ob.name[-2:] in ('_L', '_R') else ob.name
+            hsh = int(hashlib.md5(base.encode()).hexdigest()[:6], 16)
+            ob.color = (*colorsys.hsv_to_rgb((hsh % 360) / 360.0, 0.45 + (hsh >> 9) % 30 / 100.0, 0.85), 1)
 AX = {'x': Vector((1, 0, 0)), 'y': Vector((0, 1, 0)), 'z': Vector((0, 0, 1))}
 os.makedirs('Out/render', exist_ok=True)
 cam_data = bpy.data.cameras.new('cam'); cam_data.type = 'ORTHO'
@@ -81,8 +96,11 @@ for name, v in views.items():
     cam_data.ortho_scale = max(w, h) / v['a'] * k
     cam_data.clip_start = 0.1; cam_data.clip_end = 100
     scene.render.resolution_x = int(w * ZOOM); scene.render.resolution_y = int(h * ZOOM); scene.render.resolution_percentage = 100
-    scene.render.filepath = os.path.abspath(f"Out/render/{ver}_{name}{'_wire' if WIRE else ''}.png")
+    scene.render.filepath = os.path.abspath(f"Out/render/{ver}_{name}{'_colors' if COLORS else ''}.png")
     bpy.ops.render.render(write_still=True)
-if not WIRE:
+if not COLORS:
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(f'Out/car_{ver}.blend'))
+    try:
+        bpy.ops.wm.obj_export(filepath=os.path.abspath(f'Out/car_{ver}.obj'), export_materials=False, export_triangulated_mesh=False)
+    except Exception as ex: print('obj export failed', ex)
 print('RENDER_DONE')

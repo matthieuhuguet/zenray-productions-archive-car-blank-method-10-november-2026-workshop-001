@@ -1,0 +1,18 @@
+# 10 November 2026 19:40 - V_007 = V_006 + clean tail fan, slanted rear door cut (as on the reference), lower splitter,
+# side markers, underbody plate ; rear fins removed until the diffuser is modelled properly.
+import json
+s = json.load(open('Spec/V_006.json')); P = s['points']
+def setp(k, **kw):
+    for ax, v in kw.items(): P[k]['xyz'.index(ax)] = float(v)
+setp('16,3', x=528, y=84); setp('16,4', x=526, y=100); setp('16,5', x=524, y=113)
+setp('16,6', y=124); setp('16,7', y=119); setp('16,8', y=116); setp('15,6', y=131)
+setp('10,4', x=349); setp('10,5', x=362); setp('10,6', x=352.5); setp('10,7', x=343); setp('10,8', x=335)
+ex = [e for e in s['extras'] if e['name'] != 'rear_fin']
+for e in ex:
+    if e['name'] == 'splitter': e['bounds'] = [6, 66, -112, 112, 16, 22]; e['sweep'] = 26.0
+    if e['name'].startswith('strut'): e['bounds'][4] = 22; e['bounds'][5] = 33
+    if e['name'] == 'rear_valance': e['bounds'] = [528, 540, -98, 98, 18, 34]
+ex += [{'name': 'side_marker', 'kind': 'box', 'bounds': [168, 194, 129.0, 131.5, 85.5, 89.5], 'n': [3, 1, 1], 'mirror': True, 'mat': 'panel_dark'},
+       {'name': 'under_plate', 'kind': 'box', 'bounds': [150, 430, -70, 70, 27.0, 28.5], 'n': [12, 8, 1], 'mat': 'splitter'}]
+s['extras'] = ex; s['meta']['version'] = 'V_007'
+json.dump(s, open('Spec/V_007.json', 'w'), indent=0)

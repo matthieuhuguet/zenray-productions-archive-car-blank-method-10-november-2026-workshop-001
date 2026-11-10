@@ -9,7 +9,10 @@ import Build
 
 NS, NR = 18, 13
 CREASE_RAILS = (2, 3, 4, 5, 8, 9)        # hard lines across a section
-KINK_DEG = 24.0                          # along a rail, a turn sharper than this stays a hard corner
+KINK_DEG = 40.0                          # along a rail, a turn sharper than this stays a hard corner
+# transverse crease lines: (station, first rail, last rail). The same list drives the hard points and the sharp edges.
+CREASE_STATIONS = ((4, 0, 2), (8, 0, 2), (11, 0, 2), (15, 0, 2), (6, 3, 4), (12, 3, 4), (5, 2, 2))
+HARD = {(s_, r_) for s_, a_, b_ in CREASE_STATIONS for r_ in range(a_, b_ + 1)}
 
 def hermite(P, corner, n, ghost0=None, ghost1=None):
     """Interpolate a polyline P (m points) with n sub-steps per segment. corner[i] True = hard kink at point i.
@@ -47,7 +50,7 @@ def arch_path(a, ks, kr):
 
 def densify(spec, ks, kr):
     P = {tuple(map(int, k.split(','))): np.array(v, float) for k, v in spec['points'].items()}
-    hard = {tuple(c) for c in spec.get('hard_points', [])}
+    hard = {tuple(c) for c in spec.get('hard_points', [])} | HARD
     D1 = {}
     for r in range(NR):
         for run in runs([s for s in range(NS) if (s, r) in P]):

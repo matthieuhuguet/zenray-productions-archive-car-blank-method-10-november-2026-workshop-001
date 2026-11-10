@@ -1,0 +1,110 @@
+# 10 November 2026 18:55 - split the dense body into real components (panels with a gap and a flange, recessed glass),
+# each one a clean quad grid. No modifier anywhere: what is built here is the final mesh.
+# FR : decoupe de la caisse dense en composants (panneaux avec jeu et rebord, vitres en retrait), chacun en grille de quads.
+import json, sys
+from collections import defaultdict
+import numpy as np
+sys.path.insert(0, 'Scripts')
+import Build, Lattice
+
+GAP = 0.9        # wu between two panels (about 7 mm)
+FLANGE = 3.0     # wu, depth of the return lip behind every panel edge
+# component rules on coarse cells: name, kind ('centre' = one piece across the car, 'side' = left + right), cells
+def cell_rule(s, r):
+    if r >= 8: return 'underbody', 'centre'
+    if r <= 1:
+        if s <= 3: return 'hood', 'centre'
+        if s <= 7: return 'glass_windshield', 'centre'
+        if s <= 10: return 'roof', 'centre'
+        if s <= 14: return 'glass_rear', 'centre'
+        return 'rear_deck', 'centre'
+    if s >= 15 and r <= 3: return 'rear_deck', 'centre'
+    if r == 2 and 6 <= s <= 14: return 'greenhouse_frame', 'side'
+    if r == 3 and 6 <= s <= 11: return 'glass_side_' + 'abc'[(s - 6) // 2], 'side'
+    if r == 3 and 12 <= s <= 14: return 'rear_quarter', 'side'
+    if s <= 1 and r >= 5: return 'front_bumper', 'centre'
+    if s <= 6: return 'front_fender', 'side'
+    if s <= 9 and r >= 4: return 'door', 'side'
+    if s <= 9: return 'front_fender', 'side'
+    return 'rear_quarter', 'side'
+
+def face_rule(k):
+    if k[0] == 'grid': return cell_rule(k[1], k[2])
+    if k[0] == 'cap':
+        if k[1] == 'front': return 'front_bumper', 'centre'
+        return ('rear_panel', 'centre') if (k[2] < 3 and 1 <= k[3] < 3) else ('rear_fascia', 'centre')
+    return 'wheelwell_' + k[1], 'side'
+
+OFFSET = {'glass_windshield': 1.2, 'glass_rear': 1.2, 'glass_side_a': 1.2, 'glass_side_b': 1.2, 'glass_side_c': 1.2, 'rear_panel': 4.0}
+NO_FLANGE = {'underbody', 'wheelwell_front', 'wheelwell_rear'}
+
+def sharp_key_edge(k1, k2, ks, kr):
+    """Is the dense edge between lattice keys k1 and k2 on a crease line?"""
+    if not (isinstance(k1[0], int) and isinstance(k2[0], int)): return False
+    (s1, r1), (s2, r2) = k1, k2
+    if r1 == r2 and r1 % kr == 0 and (r1 // kr) in (2, 3, 4, 5, 8): return True
+    if s1 == s2 and s1 % ks == 0:
+        st = s1 // ks; lo, hi = min(r1, r2), max(r1, r2)
+        if st in (0, Lattice.NS - 1): return True
+        for cs, a, b in Lattice.CREASE_STATIONS:
+            if cs == st and a * kr <= lo and hi <= b * kr: return True
+    return False
+
+def finish(V, F, sharp, name, gap, flange):
+    """Border treatment of one open panel: pull the border in by gap/2 (in the surface), then extrude a return lip."""
+    V = [np.array(v, float) for v in V]
+    ecount = defaultdict(int); vn = defaultdict(lambda: np.zeros(3)); vc = defaultdict(list)
+    for f in F:
+        p = np.array([V[i] for i in f]); n = np.cross(p[2] - p[0], p[3] - p[1]); n /= (np.linalg.norm(n) + 1e-12); c = p.mean(0)
+        for q in range(4):
+            ecount[(min(f[q], f[(q + 1) % 4]), max(f[q], f[(q + 1) % 4]))] += 1; vn[f[q]] += n; vc[f[q]].append(c)
+    border = [e for e, c in ecount.items() if c == 1]
+    bverts = sorted({i for e in border for i in e})
+    for i in bverts:
+        n = vn[i] / (np.linalg.norm(vn[i]) + 1e-12); d = np.mean(vc[i], 0) - V[i]; d -= n * np.dot(d, n)
+        L = np.linalg.norm(d)
+        if L > 1e-9: V[i] = V[i] + d / L * min(gap / 2, 0.45 * L)
+    sharp = set(sharp)
+    if flange > 0 and border:
+        new = {}
+        for i in bverts:
+            n = vn[i] / (np.linalg.norm(vn[i]) + 1e-12); new[i] = len(V); V.append(V[i] - n * flange)
+        for a, b in border:
+            F.append([a, b, new[b], new[a]]); sharp.add((a, b))
+    return np.array(V), F, sorted(sharp)
+
+def build(spec, ks=4, kr=4, gap=GAP, flange=FLANGE):
+    V, F, fk, idx = Lattice.build_half(spec, ks, kr)
+    key_of = {i: k for k, i in idx.items()}
+    groups = defaultdict(list); kind = {}
+    for fi, k in enumerate(fk):
+        name, kd = face_rule(k); groups[name].append(fi); kind[name] = kd
+    parts = {}
+    for name, fis in groups.items():
+        used = sorted({i for fi in fis for i in F[fi]}); m = {o: n for n, o in enumerate(used)}
+        Vc = V[used].copy(); Fc = [[m[i] for i in F[fi]] for fi in fis]
+        sharp = set()
+        for f in Fc:
+            for q in range(4):
+                a, b = f[q], f[(q + 1) % 4]
+                if sharp_key_edge(key_of[used[a]], key_of[used[b]], ks, kr): sharp.add((min(a, b), max(a, b)))
+        if name in OFFSET:      # recess: push the whole patch along its normals (vertices on the centre plane stay on it)
+            vn = np.zeros_like(Vc)
+            for f in Fc:
+                p = Vc[f]; n = np.cross(p[2] - p[0], p[3] - p[1]); n /= (np.linalg.norm(n) + 1e-12)
+                for i in f: vn[i] += n
+            on = np.abs(Vc[:, 1]) < 1e-6; vn[on, 1] = 0
+            Vc = Vc - OFFSET[name] * vn / (np.linalg.norm(vn, axis=1, keepdims=True) + 1e-12)
+        variants = []
+        if kind[name] == 'centre':
+            V2, F2, _, mi = Build.mirror(Vc, Fc, [0] * len(Fc))
+            sh = sharp | {(min(int(mi[a]), int(mi[b])), max(int(mi[a]), int(mi[b]))) for a, b in sharp}
+            variants.append((name, V2, F2, sh))
+        else:
+            variants.append((name + '_L', Vc, [list(f) for f in Fc], sharp))
+            variants.append((name + '_R', Vc * [1, -1, 1], [f[::-1] for f in Fc], sharp))
+        for nm, Vv, Fv, sh in variants:
+            Vf, Ff, shf = finish(Vv, Fv, sh, nm, gap, 0.0 if name in NO_FLANGE else flange)
+            mat = 'glass' if name.startswith('glass') else name
+            parts[nm] = {'verts': Vf, 'faces': Ff, 'mat': mat, 'sharp': shf}
+    return parts

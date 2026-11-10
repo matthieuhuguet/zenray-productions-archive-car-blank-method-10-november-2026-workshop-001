@@ -44,7 +44,7 @@ def score(parts, views, refs, names=None):
 if __name__ == '__main__':
     import Model
     spec = json.load(open(sys.argv[1])); views = json.load(open('Spec/Views.json')); refs = ref_masks()
-    parts = Model.shell_parts(spec)
+    parts = Model.component_parts(spec) if 'components' in sys.argv else Model.shell_parts(spec)   # 10 November 2026 20:15 - score what is delivered
     res = score(parts, views, refs); print(json.dumps(res))
     if '--sheet' in sys.argv:
         tiles = []

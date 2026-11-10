@@ -1,0 +1,64 @@
+# 10 November 2026 17:25 - direct transfer of the reference silhouette profiles onto the control points (no blind search):
+# side view -> heights of the top line and of the sill ; top view -> widths ; nose and tail extents.
+# usage: python3 Scripts/FitProfiles.py Spec/V_in.json V_out [iterations]
+import json, sys
+import numpy as np
+sys.path.insert(0, 'Scripts')
+import Overlay_lib as OL, Score, Lattice, Build
+spec = json.load(open(sys.argv[1])); out_ver = sys.argv[2]; iters = int(sys.argv[3]) if len(sys.argv) > 3 else 4
+views = json.load(open('Spec/Views.json')); refs = Score.ref_masks(); P = spec['points']
+def body_mask(name):
+    V, F, fk, vol = Lattice.shell(spec, 2, 2)
+    return OL.parts_mask({'b': {'verts': V, 'faces': F}}, views[name], refs[name].shape)
+def col(mask, x):
+    x = int(round(x))
+    if not (0 <= x < mask.shape[1]): return None
+    ys = np.nonzero(mask[:, x])[0]; return (ys.min(), ys.max()) if len(ys) else None
+def row(mask, y):
+    y = int(round(y))
+    if not (0 <= y < mask.shape[0]): return None
+    xs = np.nonzero(mask[y])[0]; return (xs.min(), xs.max()) if len(xs) else None
+def pts(st): return {int(k.split(',')[1]): v for k, v in P.items() if int(k.split(',')[0]) == st}
+clamp = lambda d, m=5.0: float(max(-m, min(m, d)))
+for it in range(iters):
+    log = []
+    # A. widths from the top view (wheels excluded: the body alone must carry the outline)
+    v = views['top']; mm = body_mask('top'); ref = refs['top']
+    for st in range(1, 16):
+        q = pts(st); ymax = max(p[1] for p in q.values()); xs = [p[0] for p in q.values() if p[1] > ymax - 4]
+        x = v['ox'] + v['a'] * float(np.mean(xs)); cr, cm = col(ref, x), col(mm, x)
+        if cr is None or cm is None: continue
+        d = clamp(((cr[1] - cr[0]) - (cm[1] - cm[0])) / 2 / v['a'] * 0.9)
+        for r, p in q.items():
+            if p[1] > ymax - 4: p[1] += d
+        log.append(round(d, 1))
+    for a in spec['arches'].values():       # keep the arch lip width in step with its control points
+        a['y'] = float(np.mean([P[f"{s_},6"][1] for s_ in range(a['s0'], a['s1'] + 1)]))
+    # B. heights from the left side view: top line, then sill between the wheels
+    v = views['left']; mm = body_mask('left'); ref = refs['left']
+    for st in range(1, 17):
+        q = pts(st); zmax = max(p[2] for p in q.values()); xs = [p[0] for p in q.values() if p[2] > zmax - 3]
+        x = v['ox'] + v['a'] * float(np.mean(xs)); cr, cm = col(ref, x), col(mm, x)
+        if cr is None or cm is None: continue
+        d = clamp((cm[0] - cr[0]) / v['a'] * 0.9)
+        for r, p in q.items():
+            if p[2] > zmax - 3: p[2] += d
+        log.append(round(d, 1))
+    for st in range(7, 12):
+        q = pts(st); x = v['ox'] + v['a'] * q[8][0]; cr, cm = col(ref, x), col(mm, x)
+        if cr is None or cm is None: continue
+        d = clamp((cm[1] - cr[1]) / v['a'] * 0.9)
+        for r in (8, 9, 10, 11, 12): q[r][2] += d
+        log.append(round(d, 1))
+    # C. nose and tail extents: top view rows for the plan shape of the two end loops
+    v = views['top']; mm = body_mask('top'); ref = refs['top']
+    for st, side in ():     # disabled 10 November 2026: not identifiable row by row, the ends are set from printed rows instead
+        q = pts(st)
+        for r in range(0, 6):
+            y = v['oy'] - v['a'] * q[r][1]; rr, rm = row(ref, y), row(mm, y)
+            if rr is None or rm is None: continue
+            d = clamp((rr[side] - rm[side]) / v['a'] * 0.9)
+            q[r][0] += d; log.append(round(d, 1))
+    print('iteration', it + 1, 'max |move|', max(abs(x) for x in log), 'mean |move|', round(float(np.mean(np.abs(log))), 2))
+spec['meta']['version'] = out_ver
+json.dump(spec, open(f'Spec/{out_ver}.json', 'w'), indent=0)

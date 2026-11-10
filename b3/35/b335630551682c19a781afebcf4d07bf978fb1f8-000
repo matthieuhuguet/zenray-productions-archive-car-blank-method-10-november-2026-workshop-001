@@ -1,0 +1,30 @@
+# Car Blank Method (10 November 2026)
+
+Protocole neuf, sans rien lire de ZenRay Meshes, pour reproduire la voiture `Ref/Car6Views.png` en quads. (10 November 2026)
+
+## La chaîne, dans l'ordre (10 November 2026)
+
+1. `Scripts/Calibrate.py` : découpe les 6 vues, masques, boîtes, zooms quadrillés. `Scripts/Zoom.py` : zoom contrasté d'une zone. (10 November 2026)
+2. `Spec/V_xxx.json` : le treillis de contrôle, 18 stations x 13 rails par demi-voiture, en « wu » (pixel de la vue de côté). C'est le seul endroit où vivent les cotes. Chaque version naît d'un petit script `Scripts/Versions/V_xxx.py`. (10 November 2026)
+3. `Scripts/Lattice.py` : rééchantillonne le treillis par splines interpolantes (la surface passe par les points, les arêtes vives restent vives) et construit la caisse fermée en quads, passages de roue creusés. Aucune subdivision. (10 November 2026)
+4. `Scripts/Components.py` : découpe en composants (panneaux avec jeu `GAP` et rebord `FLANGE`, vitres en retrait). `Scripts/Wheel.py`, `Scripts/Parts.py` : roues et petites pièces paramétriques. (10 November 2026)
+5. `Scripts/Score.py` : le juge (recouvrement des silhouettes et distance des contours, par vue). `Scripts/RefConsistency.py` : plafond atteignable, mesuré sur la référence elle-même. (10 November 2026)
+6. `Scripts/FitViews.py` (échelle et position de chaque vue) et `Scripts/FitProfiles.py` (transfert des profils mesurés vers les points de contrôle). (10 November 2026)
+7. `Scripts/Run.sh V_xxx components` : une itération complète (export, score, rendu Blender 6 vues, planche). `Scripts/WireSheet.py V_xxx` : planche fil de fer. (10 November 2026)
+
+## Paramètres à changer soi-même (10 November 2026)
+
+- Forme : `Spec/V_xxx.json`, clés `points` (`"station,rail": [X, Y, Z]`), `arches`, `wheels`, `extras`. (10 November 2026)
+- Densité : `ks`, `kr` de `Lattice.build_half` (4 et 4 par défaut). Jeu et rebord : `GAP`, `FLANGE` en tête de `Scripts/Components.py`. Découpe : `cell_rule`. (10 November 2026)
+- Relancer : `Scripts/Run.sh V_xxx components`. (10 November 2026)
+
+## Mesures (10 November 2026)
+
+- V_001 (cage subdivisée) 0,905 ; V_008 (51 composants, 17 722 quads, 0 triangle) 0,956 ; plafond mesuré 0,978 (paires opposées : côté 0,981, dessus et dessous 0,967, avant et arrière 0,918). (10 November 2026)
+
+## Pièges payés (10 November 2026)
+
+- Blender : une référence d'attribut meurt dès qu'on crée un autre attribut ; créer tous les attributs puis les relire par leur nom. (10 November 2026)
+- La subdivision arrondit et rétrécit ; abandonnée à la demande de Matthieu au profit du maillage dense interpolant. (10 November 2026)
+- `FitProfiles` étape nez et queue : un déplacement qui ne change pas la mesure continue de se déplacer ; étape coupée, extrémités réglées d'après les lignes imprimées. (10 November 2026)
+- Les vues de la référence ne s'accordent pas (largeur du pavillon 85 en vue de dessus, 74 en vue avant) : dessus et côté font foi. (10 November 2026)

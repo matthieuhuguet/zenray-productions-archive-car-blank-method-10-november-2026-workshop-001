@@ -1,0 +1,26 @@
+# 10 November 2026 20:05 - topology sheet: every quad edge of every component drawn on the model render (back faces culled).
+# usage: python3 Scripts/WireSheet.py V_008 -> Sheets/wire_<ver>.png
+import json, sys
+import numpy as np
+from PIL import Image, ImageDraw
+sys.path.insert(0, 'Scripts')
+import Model, Overlay_lib as OL
+ver = sys.argv[1]; Z = 2
+spec = json.load(open(f'Spec/{ver}.json')); views = json.load(open('Spec/Views.json')); cal = json.load(open('Out/calibration.json'))
+parts = Model.component_parts(spec)
+sheet = Image.new('RGB', (1254 * Z, 1254 * Z), (32, 33, 36))
+for name, c in cal.items():
+    x0, y0, x1, y1 = c['panel']; v = views[name]
+    im = Image.open(f'Out/render/{ver}_{name}.png').convert('RGB').resize(((x1 - x0) * Z, (y1 - y0) * Z)); dr = ImageDraw.Draw(im)
+    d = np.zeros(3); d[OL.AX[v['cam'][0]]] = 1 if v['cam'][1] == '+' else -1
+    for p in parts.values():
+        V = np.asarray(p['verts'], float); uv = OL.project(V, v) * Z; seen = set()
+        for f in p['faces']:
+            q = V[f]; n = np.cross(q[2] - q[0], q[3] - q[1])
+            if float(n @ d) <= 1e-9: continue
+            for k in range(4):
+                e = (min(f[k], f[(k + 1) % 4]), max(f[k], f[(k + 1) % 4]))
+                if e in seen: continue
+                seen.add(e); dr.line([tuple(uv[e[0]]), tuple(uv[e[1]])], fill=(25, 28, 34), width=1)
+    sheet.paste(im, (x0 * Z, y0 * Z))
+sheet.save(f'Sheets/wire_{ver}.png'); print(sheet.size)

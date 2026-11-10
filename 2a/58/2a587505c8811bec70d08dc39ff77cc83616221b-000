@@ -1,0 +1,30 @@
+# 10 November 2026 18:25 - export parts for Blender without any modifier: what is exported IS the final mesh.
+# usage: python3 Scripts/Export2.py Spec/V_xxx.json [shell|components]
+import json, sys
+import numpy as np
+sys.path.insert(0, 'Scripts')
+import Build, Model
+spec = json.load(open(sys.argv[1])); mode = sys.argv[2] if len(sys.argv) > 2 else 'shell'
+parts = Model.shell_parts(spec) if mode == 'shell' else Model.component_parts(spec)
+def auto_sharp(V, F, deg=28.0):
+    # 10 November 2026 19:35 - sharp edges by dihedral angle, computed here so that Blender needs no modifier at all
+    from collections import defaultdict
+    e2n = defaultdict(list)
+    for f in F:
+        p = V[f]; n = np.cross(p[2] - p[0], p[3] - p[1]); n = n / (np.linalg.norm(n) + 1e-12)
+        for q in range(len(f)): e2n[(min(f[q], f[(q + 1) % len(f)]), max(f[q], f[(q + 1) % len(f)]))].append(n)
+    c = np.cos(np.radians(deg))
+    return [e for e, ns in e2n.items() if len(ns) != 2 or float(np.dot(ns[0], ns[1])) < c]
+
+out = {}; rep = {}
+for name, p in parts.items():
+    V = np.asarray(p['verts'], float); F = [list(map(int, f)) for f in p['faces']]
+    out[name] = {'verts': V.tolist(), 'faces': F, 'mats': p.get('mats') or [p.get('mat', 'body')] * len(F), 'creases': [], 'sharp': [list(map(int, e)) for e in (p['sharp'] if 'sharp' in p else auto_sharp(V, F))], 'subdiv': 0}
+    rep[name] = Build.topology_report(V, F)
+    if mode == 'components': pass
+ver = spec['meta']['version']
+json.dump({'scale': spec['meta']['metres_per_wu'], 'version': ver, 'parts': out}, open(f'Out/car_{ver}.json', 'w'))
+tot = {k: sum(r[k] for r in rep.values()) for k in ('verts', 'faces', 'quads', 'tris', 'ngons', 'boundary_edges', 'nonmanifold_edges')}
+tot['parts'] = len(rep); tot['max_valence'] = max(max(map(int, r['valence_hist'])) for r in rep.values())
+json.dump({'total': tot, 'parts': rep}, open(f'Out/topology_{ver}.json', 'w'), indent=1)
+print(json.dumps(tot))
