@@ -1,0 +1,15 @@
+{
+ "left|right": {
+  "pair_iou": 0.9809,
+  "ceiling_mean_iou": 0.9905
+ },
+ "top|bottom": {
+  "pair_iou": 0.9666,
+  "ceiling_mean_iou": 0.9833
+ },
+ "front|back": {
+  "pair_iou": 0.9179,
+  "ceiling_mean_iou": 0.959
+ },
+ "ceiling_all_views": 0.9776
+}
