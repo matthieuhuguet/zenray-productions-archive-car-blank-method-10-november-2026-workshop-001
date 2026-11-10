@@ -1,0 +1,65 @@
+# 10 November 2026 11:35 - Step 1 of the protocol: split the 6 views, mask the car, measure boxes, write gridded zooms.
+# EN: every number used later comes from this file's JSON output, nothing is guessed by eye without a grid.
+import json, sys
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+from scipy import ndimage as ndi
+
+REF = 'Ref/Car6Views.png'
+PANELS = {  # x0,y0,x1,y1 in sheet pixels (dividers measured at x=626, y=411, y=779)
+    'front': (0, 0, 626, 411), 'back': (628, 0, 1254, 411),
+    'left': (0, 413, 626, 779), 'right': (628, 413, 1254, 779),
+    'top': (0, 781, 626, 1254), 'bottom': (628, 781, 1254, 1254),
+}
+ZOOM = 3
+
+def car_mask(rgb):
+    g = rgb.astype(float)
+    bg = np.median(g.reshape(-1, 3), axis=0)
+    d = np.abs(g - bg).max(axis=2)
+    m = d > 14
+    m = ndi.binary_opening(m, iterations=1)
+    m = ndi.binary_closing(m, iterations=2)
+    m = ndi.binary_fill_holes(m)
+    lab, n = ndi.label(m)
+    sizes = ndi.sum(m, lab, range(1, n + 1))
+    order = np.argsort(sizes)[::-1]
+    car = lab == (order[0] + 1)
+    cube = lab == (order[1] + 1) if n > 1 else np.zeros_like(car)
+    return car, cube, bg
+
+def bbox(m):
+    ys, xs = np.nonzero(m)
+    return [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())]
+
+def main():
+    sheet = np.asarray(Image.open(REF).convert('RGB'))
+    out = {}
+    for name, (x0, y0, x1, y1) in PANELS.items():
+        rgb = sheet[y0:y1, x0:x1]
+        car, cube, bg = car_mask(rgb)
+        Image.fromarray((car * 255).astype(np.uint8)).save(f'Out/mask_{name}.png')
+        out[name] = {'panel': [x0, y0, x1, y1], 'car_bbox': bbox(car), 'cube_bbox': bbox(cube) if cube.any() else None,
+                     'bg': [float(v) for v in bg]}
+        big = Image.fromarray(rgb).resize(((x1 - x0) * ZOOM, (y1 - y0) * ZOOM), Image.LANCZOS)
+        dr = ImageDraw.Draw(big)
+        for gx in range(0, x1 - x0, 10):
+            c = (255, 60, 60) if gx % 50 == 0 else (255, 160, 160)
+            if gx % 50 == 0 or True:
+                dr.line([(gx * ZOOM, 0), (gx * ZOOM, big.size[1])], fill=c, width=1 if gx % 50 else 1)
+            if gx % 50 == 0:
+                dr.text((gx * ZOOM + 2, 2), str(gx), fill=(255, 255, 0))
+                dr.text((gx * ZOOM + 2, big.size[1] - 12), str(gx), fill=(255, 255, 0))
+        for gy in range(0, y1 - y0, 10):
+            c = (60, 200, 255) if gy % 50 == 0 else (150, 215, 255)
+            dr.line([(0, gy * ZOOM), (big.size[0], gy * ZOOM)], fill=c, width=1)
+            if gy % 50 == 0:
+                dr.text((2, gy * ZOOM + 2), str(gy), fill=(255, 255, 0))
+                dr.text((big.size[0] - 26, gy * ZOOM + 2), str(gy), fill=(255, 255, 0))
+        big.save(f'Out/grid_{name}.png')
+    json.dump(out, open('Out/calibration.json', 'w'), indent=1)
+    for k, v in out.items():
+        b = v['car_bbox']; c = v['cube_bbox']
+        print(k, 'car', b, 'w,h', b[2] - b[0] + 1, b[3] - b[1] + 1, 'cube', c, (c[2] - c[0] + 1, c[3] - c[1] + 1) if c else None)
+
+main()

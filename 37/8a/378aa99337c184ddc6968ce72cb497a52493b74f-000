@@ -1,0 +1,95 @@
+# 10 November 2026 13:50 - parametric all-quad wheel: tyre (closed ring) + rim (closed, 6 spokes, recessed windows).
+# EN: axis along Y, outer face at y = +half width. Built in local space, the caller places and mirrors it.
+import math
+import numpy as np
+
+def grid_disc(ring_pts):
+    """Fill a ring of 4n points with an n x n quad grid (square mapped on the disc). Returns extra points + quads (indices
+    into ring first, then extras)."""
+    m = len(ring_pts); n = m // 4
+    ring = np.array(ring_pts, float); c = ring.mean(0)
+    idx = {}; extra = []
+    # boundary of the n x n grid, walking the ring: side 0: (i,0), side 1: (n,j), side 2: (n-i,n), side 3: (0,n-j)
+    for k in range(m):
+        s, t = divmod(k, n)
+        ij = [(t, 0), (n, t), (n - t, n), (0, n - t)][s]
+        idx[ij] = k
+    for i in range(1, n):
+        for j in range(1, n):
+            u, v = i / n, j / n
+            T = ring[idx[(i, 0)]]; B = ring[idx[(i, n)]]; L = ring[idx[(0, j)]]; R = ring[idx[(n, j)]]
+            c00, c10, c01, c11 = ring[idx[(0, 0)]], ring[idx[(n, 0)]], ring[idx[(0, n)]], ring[idx[(n, n)]]
+            p = (1 - v) * T + v * B + (1 - u) * L + u * R - ((1 - u) * (1 - v) * c00 + u * (1 - v) * c10 + (1 - u) * v * c01 + u * v * c11)
+            idx[(i, j)] = m + len(extra); extra.append(p)
+    quads = [[idx[(i, j)], idx[(i + 1, j)], idx[(i + 1, j + 1)], idx[(i, j + 1)]] for i in range(n) for j in range(n)]
+    return extra, quads
+
+def revolve(profile, n, closed=True):
+    """profile: list of (radius, y). Returns verts and quads of the revolved strip(s)."""
+    V = []; F = []
+    for (r, y) in profile:
+        for k in range(n):
+            a = 2 * math.pi * k / n
+            V.append([r * math.cos(a), y, r * math.sin(a)])
+    m = len(profile)
+    for i in range(m if closed else m - 1):
+        j = (i + 1) % m
+        for k in range(n):
+            k2 = (k + 1) % n
+            F.append([i * n + k, i * n + k2, j * n + k2, j * n + k])
+    return V, F
+
+def tyre(R, rim, width, n=24):
+    w = width / 2.0; s = min(6.0, (R - rim) * 0.5)
+    prof = [(rim, w - 2), (rim + 3, w), (R - s, w), (R, w - s), (R, 0.0), (R, -w + s), (R - s, -w), (rim + 3, -w), (rim, -w + 2), (rim - 1.5, 0.0)]
+    return revolve(prof, n, closed=True)
+
+def rim(rim_r, width, spokes=6, spoke_w=8.5, hub_r=9.0, cap_r=5.5, depth=7.0, n_per=4):
+    """Closed rim: front face with recessed windows between spokes, barrel, back cap."""
+    n = spokes * n_per; w = width / 2.0 - 3.0     # face sits 3 wu inside the tyre wall
+    r_sp = rim_r - 5.0                            # where spokes meet the outer ring
+    V = []; F = []
+    def ang(k, r):
+        sec, t = divmod(k, n_per); base = math.pi / 2 + 2 * math.pi * sec / spokes
+        d = math.asin(min(0.95, spoke_w / 2.0 / max(r, spoke_w / 2.0 / 0.95)))
+        step = 2 * math.pi / spokes
+        return base + [-d, d, step * 0.5 - 0.0, step - d][t] if t != 2 else base + step * 0.5
+    def ring(r, y, fixed=False):
+        i0 = len(V)
+        for k in range(n):
+            a = (math.pi / 2 + 2 * math.pi * (k - 0.5) / n) if fixed else ang(k, r)
+            V.append([r * math.cos(a), y, r * math.sin(a)])
+        return list(range(i0, i0 + n))
+    def strip(A, B, skip=()):
+        for k in range(n):
+            if k in skip: continue
+            k2 = (k + 1) % n; F.append([A[k], A[k2], B[k2], B[k]])
+    cap = ring(cap_r, w + 1.5); hub = ring(hub_r, w); sp = ring(r_sp, w - 1.0); out = ring(rim_r - 1.5, w); lip = ring(rim_r, w + 1.0)
+    extra, quads = grid_disc([V[i] for i in cap]); i0 = len(V); V.extend([list(p) for p in extra])
+    F.extend([[cap[q] if q < n else i0 + q - n for q in quad] for quad in quads])
+    strip(cap, hub)
+    # spoke zone hub->sp: per sector, segment 0 (between t=0 and t=1) is the spoke; 1,2,3 are window (t=1..3 -> next sector t=0)
+    windows = [k for k in range(n) if k % n_per != 0]
+    strip(hub, sp, skip=windows)
+    hub_d = ring(hub_r, w - depth); sp_d = ring(r_sp, w - depth)
+    for k in windows:
+        k2 = (k + 1) % n
+        F.append([hub_d[k], hub_d[k2], sp_d[k2], sp_d[k]])            # window floor
+        F.append([hub[k], hub[k2], hub_d[k2], hub_d[k]])              # hub-side wall
+        F.append([sp_d[k], sp_d[k2], sp[k2], sp[k]])                  # rim-side wall
+    for k in range(n):
+        if k % n_per == 0:   # spoke occupies k -> k+1 ; walls on its two radial edges
+            k2 = (k + 1) % n
+            F.append([hub[k], hub_d[k], sp_d[k], sp[k]])
+            F.append([hub[k2], sp[k2], sp_d[k2], hub_d[k2]])
+    strip(sp, out); strip(out, lip)
+    b1 = ring(rim_r, -w, fixed=False); strip(lip, b1)
+    b2 = ring(hub_r, -w + 2.0); strip(b1, b2)
+    extra, quads = grid_disc([V[i] for i in b2]); i0 = len(V); V.extend([list(p) for p in extra])
+    F.extend([[b2[q] if q < n else i0 + q - n for q in quad] for quad in quads])
+    return V, F
+
+def place(V, x, y_out, z, width, side=1):
+    A = np.array(V, float)
+    A = A[:, [0, 1, 2]] * [1, side, 1] + [x, side * (y_out - width / 2.0), z]
+    return A

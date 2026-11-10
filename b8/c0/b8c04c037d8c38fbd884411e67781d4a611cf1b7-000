@@ -1,0 +1,107 @@
+# 10 November 2026 13:20 - Step 4: project the cage on the 6 reference views, draw it, and measure the fit.
+# usage: python3 Scripts/Overlay.py Spec/V_001.json  -> Sheets/overlay_<version>.png + metrics JSON on stdout
+import json, sys
+import numpy as np
+from PIL import Image, ImageDraw
+from scipy import ndimage as ndi
+sys.path.insert(0, 'Scripts')
+import Build
+
+ZOOM = 3
+ORDER = ['front', 'back', 'left', 'right', 'top', 'bottom']
+AX = {'x': 0, 'y': 1, 'z': 2}
+
+def project(V, view):
+    a = view['a']; h = view['h']
+    u = view['ox'] + (1 if h[1] == '+' else -1) * a * V[:, AX[h[0]]]
+    v = view['oy'] - a * V[:, AX[view['v']]]
+    return np.stack([u, v], 1)
+
+def cam_dir(view):
+    d = np.zeros(3); d[AX[view['cam'][0]]] = 1 if view['cam'][1] == '+' else -1
+    return d
+
+def face_normals(V, F):
+    N = np.zeros((len(F), 3))
+    for i, f in enumerate(F):
+        p = V[f]; N[i] = np.cross(p[2] - p[0], p[3] - p[1]) if len(f) == 4 else np.cross(p[1] - p[0], p[2] - p[0])
+    return N
+
+def wheel_shapes(spec, view):
+    """2D outlines of the 4 wheels in this view: ('disc', cx, cy, r) or ('box', x0, y0, x1, y1), in pixels."""
+    out = []; a = view['a']
+    for w in spec['wheels'].values():
+        for side in (1, -1):
+            c = np.array([[w['x'], side * (w['y_out'] - w['width'] / 2), w['z']]])
+            if view['cam'][0] == 'y':
+                p = project(c, view)[0]; out.append(('disc', p[0], p[1], w['r'] * a, w['rim'] * a))
+            else:
+                lo = np.array([[w['x'] - w['r'], side * (w['y_out'] - w['width']), w['z'] - w['r']]])
+                hi = np.array([[w['x'] + w['r'], side * w['y_out'], w['z'] + w['r']]])
+                p0, p1 = project(lo, view)[0], project(hi, view)[0]
+                out.append(('box', min(p0[0], p1[0]), min(p0[1], p1[1]), max(p0[0], p1[0]), max(p0[1], p1[1])))
+    return out
+
+def model_mask(V, F, spec, view, shape):
+    im = Image.new('L', (shape[1], shape[0]), 0); dr = ImageDraw.Draw(im)
+    uv = project(V, view)
+    for f in F: dr.polygon([tuple(uv[i]) for i in f], fill=255)
+    for w in wheel_shapes(spec, view):
+        if w[0] == 'disc': dr.ellipse([w[1] - w[3], w[2] - w[3], w[1] + w[3], w[2] + w[3]], fill=255)
+        else: dr.rectangle([w[1], w[2], w[3], w[4]], fill=255)
+    return np.asarray(im) > 0
+
+def main(path):
+    spec, V, F, tags, cr, idx, mi, vol = Build.build(path)
+    views = json.load(open('Spec/Views.json')); cal = json.load(open('Out/calibration.json'))
+    sheet = np.asarray(Image.open('Ref/Car6Views.png').convert('RGB'))
+    N = face_normals(V, F)
+    from collections import defaultdict
+    e2f = defaultdict(list)
+    for fi, f in enumerate(F):
+        for k in range(4): e2f[frozenset((f[k], f[(k + 1) % 4]))].append(fi)
+    metrics = {}; panels = {}
+    for name in ORDER:
+        view = views[name]; x0, y0, x1, y1 = cal[name]['panel']
+        rgb = sheet[y0:y1, x0:x1]
+        ref = np.asarray(Image.open(f'Out/mask_{name}.png')) > 0
+        mm = model_mask(V, F, spec, view, ref.shape)
+        inter, union = (ref & mm).sum(), (ref | mm).sum()
+        # edge chamfer: reference gradient edges -> distance transform; sample the visible crease edges
+        g = rgb.astype(float).mean(2); g = ndi.gaussian_filter(g, 0.8)
+        mag = np.hypot(ndi.sobel(g, 0), ndi.sobel(g, 1))
+        edges = mag > 22
+        dt = ndi.distance_transform_edt(~edges)
+        front = (N * cam_dir(view)).sum(1) > 1e-6
+        uv = project(V, view)
+        big = Image.fromarray(rgb).resize((rgb.shape[1] * ZOOM, rgb.shape[0] * ZOOM), Image.BICUBIC)
+        dr = ImageDraw.Draw(big)
+        dsum, dn = 0.0, 0
+        for e, fs in e2f.items():
+            if not any(front[fi] for fi in fs): continue
+            a, b = tuple(e); pa, pb = uv[a], uv[b]
+            sharp = e in cr; sil = sum(front[fi] for fi in fs) == 1
+            col = (255, 40, 40) if sharp else ((255, 200, 0) if sil else (0, 220, 255))
+            dr.line([tuple(pa * ZOOM), tuple(pb * ZOOM)], fill=col, width=2 if (sharp or sil) else 1)
+            if sharp or sil:
+                for t in np.linspace(0, 1, 7):
+                    p = pa * (1 - t) + pb * t; iy, ix = int(round(p[1])), int(round(p[0]))
+                    if 0 <= iy < dt.shape[0] and 0 <= ix < dt.shape[1]: dsum += min(dt[iy, ix], 12); dn += 1
+        for w in wheel_shapes(spec, view):
+            if w[0] == 'disc':
+                for r in (w[3], w[4]): dr.ellipse([(w[1] - r) * ZOOM, (w[2] - r) * ZOOM, (w[1] + r) * ZOOM, (w[2] + r) * ZOOM], outline=(60, 255, 60), width=2)
+            else: dr.rectangle([w[1] * ZOOM, w[2] * ZOOM, w[3] * ZOOM, w[4] * ZOOM], outline=(60, 255, 60), width=2)
+        panels[name] = big
+        metrics[name] = {'iou': round(float(inter / union), 4), 'crease_px': round(dsum / max(dn, 1), 2)}
+    ver = spec['meta']['version']
+    W_ = max(p.size[0] for p in panels.values()); rows = [max(panels[ORDER[i]].size[1], panels[ORDER[i + 1]].size[1]) for i in (0, 2, 4)]
+    out = Image.new('RGB', (W_ * 2 + 6, sum(rows) + 12), (20, 20, 20)); y = 0
+    for ri, i in enumerate((0, 2, 4)):
+        out.paste(panels[ORDER[i]], (0, y)); out.paste(panels[ORDER[i + 1]], (W_ + 6, y)); y += rows[ri] + 6
+    out.save(f'Sheets/overlay_{ver}.png')
+    for name in ORDER: panels[name].save(f'Sheets/overlay_{ver}_{name}.png')
+    metrics['mean_iou'] = round(float(np.mean([m['iou'] for m in metrics.values()])), 4)
+    metrics['mean_crease_px'] = round(float(np.mean([m['crease_px'] for k, m in metrics.items() if isinstance(m, dict)])), 2)
+    print(json.dumps(metrics))
+
+main(sys.argv[1] if len(sys.argv) > 1 else 'Spec/V_001.json')

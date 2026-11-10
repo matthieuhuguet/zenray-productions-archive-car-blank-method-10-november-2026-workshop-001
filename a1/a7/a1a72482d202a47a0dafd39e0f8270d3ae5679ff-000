@@ -1,0 +1,7 @@
+{"_doc": "10 November 2026 - per-view calibration: a = pixels per wu, (ox, oy) = pixel of the world origin axis, sx/sy = which world axis goes to image x/y and its sign, cam = axis the camera sits on",
+ "left":   {"a": 1.0,    "ox": 45.0,  "oy": 283.0, "h": "x+", "v": "z", "cam": "y+"},
+ "right":  {"a": 1.0215, "ox": 581.0, "oy": 283.0, "h": "x-", "v": "z", "cam": "y-"},
+ "top":    {"a": 0.9856, "ox": 52.0,  "oy": 199.5, "h": "x+", "v": "y", "cam": "z+"},
+ "bottom": {"a": 0.973,  "ox": 576.0, "oy": 200.5, "h": "x-", "v": "y", "cam": "z-"},
+ "front":  {"a": 1.393,  "ox": 322.0, "oy": 325.0, "h": "y-", "v": "z", "cam": "x-"},
+ "back":   {"a": 1.438,  "ox": 312.5, "oy": 325.0, "h": "y+", "v": "z", "cam": "x+"}}

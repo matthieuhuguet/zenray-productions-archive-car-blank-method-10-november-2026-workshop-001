@@ -1,0 +1,165 @@
+# 10 November 2026 13:00 - Step 3: control lattice -> closed all-quad body cage (box topology + 4 wheel-well notches).
+# EN: definition only, no literal geometry here; every coordinate comes from Spec/V_xxx.json.
+# FR : la definition ; toutes les valeurs viennent du fichier Spec.
+import json, sys
+import numpy as np
+
+NS, NR = 18, 13          # stations, rails per half
+TOP_CORNER, BOT_CORNER = 4, 8   # rails that carry the two corner poles of the end caps
+# crease lines (feature edges kept sharp): whole rails, and station segments (station, rail_from, rail_to)
+CREASE_RAILS = [2, 3, 4, 5, 8]
+CREASE_STATIONS = [(0, 0, 12), (17, 0, 12), (4, 0, 2), (8, 0, 2), (11, 0, 2), (15, 0, 2), (6, 3, 4), (12, 3, 4)]
+GLASS = [('windshield', 4, 8, 0, 2), ('roofglass', 11, 15, 0, 2), ('side', 6, 12, 3, 4)]  # name, s0, s1, r0, r1
+
+def load(path):
+    spec = json.load(open(path))
+    P = {tuple(map(int, k.split(','))): np.array(v, float) for k, v in spec['points'].items()}
+    return spec, P
+
+def coons(T, B, C, E):
+    """T,B: top/bottom edges (n+1 pts), C,E: centre/outer edges (m+1 pts). Returns grid[a][b], a along T, b along C."""
+    n, m = len(T) - 1, len(C) - 1
+    G = np.zeros((n + 1, m + 1, 3))
+    for a in range(n + 1):
+        for b in range(m + 1):
+            u, v = a / n, b / m
+            G[a, b] = ((1 - v) * T[a] + v * B[a] + (1 - u) * C[b] + u * E[b]
+                       - ((1 - u) * (1 - v) * T[0] + u * (1 - v) * T[n] + (1 - u) * v * B[0] + u * v * B[n]))
+    return G
+
+def build_half(spec, P):
+    V, idx, F, tags = [], {}, [], []   # tags: per face material/part name
+    def vid(key, pos=None):
+        if key not in idx:
+            idx[key] = len(V); V.append(np.array(P[key] if pos is None else pos, float))
+        return idx[key]
+    arches = spec['arches']
+    removed = set()
+    for a in arches.values():
+        for s in range(a['s0'], a['s1']):
+            removed |= {(s, 6), (s, 7), (s, 8)}
+    def mat(s, r):
+        for name, s0, s1, r0, r1 in GLASS:
+            if s0 <= s < s1 and r0 <= r < r1: return 'glass_' + name
+        return 'body'
+    for s in range(NS - 1):
+        for r in range(NR - 1):
+            if (s, r) in removed: continue
+            F.append([vid((s, r)), vid((s + 1, r)), vid((s + 1, r + 1)), vid((s, r + 1))]); tags.append(mat(s, r))
+    for name, a in arches.items():
+        s0, s1, yw = a['s0'], a['s1'], a['ywall']
+        def wall(s, r):
+            key = ('w', name, s, r)
+            if r == 6: p = P[(s, 6)].copy(); p[1] = yw
+            elif s in (s0, s1): p = P[(s, 7)].copy(); p[1] = yw
+            else:
+                top = P[(s, 6)].copy(); top[1] = yw; p = 0.5 * (top + P[(s, 9)])
+            return vid(key, p)
+        for s in range(s0, s1):
+            F.append([wall(s, 6), wall(s + 1, 6), wall(s + 1, 7), wall(s, 7)]); tags.append('wheelwell')
+            F.append([wall(s, 7), wall(s + 1, 7), vid((s + 1, 9)), vid((s, 9))]); tags.append('wheelwell')
+        lip = [(s0, 8), (s0, 7), (s0, 6)] + [(s, 6) for s in range(s0 + 1, s1)] + [(s1, 6), (s1, 7), (s1, 8)]
+        wl = [vid((s0, 9)), wall(s0, 7), wall(s0, 6)] + [wall(s, 6) for s in range(s0 + 1, s1)] + [wall(s1, 6), wall(s1, 7), vid((s1, 9))]
+        for i in range(len(lip) - 1):
+            F.append([vid(lip[i]), vid(lip[i + 1]), wl[i + 1], wl[i]]); tags.append('wheelwell')
+    for cap, s, centre in (('front', 0, spec['front_centre']), ('rear', NS - 1, spec['rear_centre'])):
+        T = [P[(s, r)] for r in range(0, TOP_CORNER + 1)]
+        E = [P[(s, r)] for r in range(TOP_CORNER, BOT_CORNER + 1)]
+        B = [P[(s, r)] for r in range(NR - 1, BOT_CORNER - 1, -1)]
+        C = [P[(s, 0)]] + [np.array(c, float) for c in centre] + [P[(s, NR - 1)]]
+        G = coons(T, B, C, E)
+        n, m = len(T) - 1, len(C) - 1
+        def cv(a, b):
+            if b == 0: return vid((s, a))
+            if a == n: return vid((s, TOP_CORNER + b))
+            if b == m: return vid((s, NR - 1 - a))
+            return vid(('cap', cap, a, b), G[a, b] if a else C[b])
+        for a in range(n):
+            for b in range(m):
+                F.append([cv(a, b), cv(a + 1, b), cv(a + 1, b + 1), cv(a, b + 1)]); tags.append('body')
+    return np.array(V), F, tags, idx
+
+def mirror(V, F, tags):
+    on = np.abs(V[:, 1]) < 1e-6
+    mi = np.arange(len(V)); V2 = [v for v in V]
+    for i in range(len(V)):
+        if not on[i]:
+            mi[i] = len(V2); V2.append(V[i] * [1, -1, 1])
+    F2 = [list(f) for f in F] + [[int(mi[i]) for i in reversed(f)] for f in F]
+    return np.array(V2), F2, tags + tags, mi
+
+def orient_outward(V, F):
+    """Propagate a consistent winding over shared edges, then flip everything if the signed volume is negative."""
+    from collections import defaultdict, deque
+    e2f = defaultdict(list)
+    for fi, f in enumerate(F):
+        for k in range(len(f)): e2f[frozenset((f[k], f[(k + 1) % len(f)]))].append(fi)
+    seen = [False] * len(F); F = [list(f) for f in F]
+    for start in range(len(F)):
+        if seen[start]: continue
+        seen[start] = True; dq = deque([start])
+        while dq:
+            fi = dq.popleft(); f = F[fi]
+            for k in range(len(f)):
+                a, b = f[k], f[(k + 1) % len(f)]
+                for fj in e2f[frozenset((a, b))]:
+                    if seen[fj]: continue
+                    g = F[fj]
+                    if any(g[q] == a and g[(q + 1) % len(g)] == b for q in range(len(g))): F[fj] = g[::-1]
+                    seen[fj] = True; dq.append(fj)
+    vol = 0.0
+    for f in F:
+        p = V[f]
+        for k in range(1, len(f) - 1): vol += np.dot(p[0], np.cross(p[k], p[k + 1])) / 6.0
+    if vol < 0: F = [f[::-1] for f in F]
+    return F, abs(vol)
+
+def crease_edges(idx, mi):
+    E = set()
+    def add(k0, k1):
+        if k0 in idx and k1 in idx:
+            a, b = idx[k0], idx[k1]
+            E.add(frozenset((a, b))); E.add(frozenset((int(mi[a]), int(mi[b]))))
+    for r in CREASE_RAILS:
+        for s in range(NS - 1): add((s, r), (s + 1, r))
+    for s, r0, r1 in CREASE_STATIONS:
+        for r in range(r0, r1): add((s, r), (s, r + 1))
+    return E
+
+def topology_report(V, F, creases=None):
+    from collections import defaultdict
+    e2f = defaultdict(int); val = defaultdict(int)
+    for f in F:
+        for k in range(len(f)): e2f[frozenset((f[k], f[(k + 1) % len(f)]))] += 1
+    for e in e2f:
+        for v in e: val[v] += 1
+    hist = defaultdict(int)
+    for v in val.values(): hist[v] += 1
+    return {
+        'verts': len(V), 'faces': len(F), 'edges': len(e2f),
+        'quads': sum(len(f) == 4 for f in F), 'tris': sum(len(f) == 3 for f in F), 'ngons': sum(len(f) > 4 for f in F),
+        'boundary_edges': sum(c == 1 for c in e2f.values()), 'nonmanifold_edges': sum(c > 2 for c in e2f.values()),
+        'euler': len(V) - len(e2f) + len(F), 'valence_hist': dict(sorted(hist.items())),
+        'unused_verts': len(V) - len(val),
+    }
+
+def build(path):
+    spec, P = load(path)
+    Vh, Fh, th, idx = build_half(spec, P)
+    V, F, tags, mi = mirror(Vh, Fh, th)
+    F, vol = orient_outward(V, F)
+    cr = crease_edges(idx, mi)
+    return spec, V, F, tags, cr, idx, mi, vol
+
+if __name__ == '__main__':
+    path = sys.argv[1] if len(sys.argv) > 1 else 'Spec/V_001.json'
+    spec, V, F, tags, cr, idx, mi, vol = build(path)
+    rep = topology_report(V, F); rep['volume_wu3'] = round(vol, 1)
+    print(json.dumps(rep))
+    name = spec['meta']['version']
+    k = spec['meta']['metres_per_wu']
+    with open(f'Out/body_{name}.obj', 'w') as fo:
+        for v in V: fo.write(f'v {v[0]*k:.5f} {v[1]*k:.5f} {v[2]*k:.5f}\n')
+        for f in F: fo.write('f ' + ' '.join(str(i + 1) for i in f) + '\n')
+    json.dump({'verts': V.tolist(), 'faces': F, 'tags': tags, 'creases': [sorted(e) for e in cr], 'scale': k, 'wheels': spec['wheels']},
+              open(f'Out/body_{name}.json', 'w'))

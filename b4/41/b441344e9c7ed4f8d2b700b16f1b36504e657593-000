@@ -1,0 +1,26 @@
+# 10 November 2026 14:05 - assemble all parts (body cage + 4 wheels) into one JSON for Blender, with a topology report per part.
+# usage: python3 Scripts/Export.py Spec/V_001.json -> Out/car_<version>.json
+import json, sys
+import numpy as np
+sys.path.insert(0, 'Scripts')
+import Build, Wheel
+
+def main(path):
+    spec, V, F, tags, cr, idx, mi, vol = Build.build(path)
+    parts = {'body': {'verts': V.tolist(), 'faces': F, 'mats': tags, 'creases': [sorted(map(int, e)) for e in cr], 'subdiv': 2}}
+    report = {'body': Build.topology_report(V, F)}
+    for wname, w in spec['wheels'].items():
+        for side, sname in ((1, 'L'), (-1, 'R')):
+            for kind, (PV, PF) in (('tyre', Wheel.tyre(w['r'], w['rim'], w['width'])), ('rim', Wheel.rim(w['rim'], w['width']))):
+                A = Wheel.place(PV, w['x'], w['y_out'], w['z'], w['width'], side)
+                PF2, _ = Build.orient_outward(A, PF)
+                name = f'{kind}_{wname}_{sname}'
+                parts[name] = {'verts': A.tolist(), 'faces': PF2, 'mats': [kind] * len(PF2), 'creases': [], 'subdiv': 1}
+                report[name] = Build.topology_report(A, PF2)
+    ver = spec['meta']['version']
+    json.dump({'scale': spec['meta']['metres_per_wu'], 'version': ver, 'parts': parts}, open(f'Out/car_{ver}.json', 'w'))
+    tot = {k: sum(r[k] for r in report.values()) for k in ('verts', 'faces', 'quads', 'tris', 'ngons', 'boundary_edges', 'nonmanifold_edges')}
+    json.dump({'total': tot, 'parts': report}, open(f'Out/topology_{ver}.json', 'w'), indent=1)
+    print(json.dumps(tot))
+
+main(sys.argv[1] if len(sys.argv) > 1 else 'Spec/V_001.json')
