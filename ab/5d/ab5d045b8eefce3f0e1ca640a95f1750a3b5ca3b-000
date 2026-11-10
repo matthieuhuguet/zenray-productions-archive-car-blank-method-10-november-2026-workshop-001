@@ -35,6 +35,9 @@ for pname, p in data['parts'].items():
         for e in me.edges:
             key = tuple(sorted(e.vertices))
             if key in cr: att.data[e.index].value = 1.0; sharp.data[e.index].value = True
+    if p.get('corners'):
+        cv = me.attributes.new('crease_vert', 'FLOAT', 'POINT')
+        for i in p['corners']: cv.data[i].value = 1.0
     ob = bpy.data.objects.new(pname, me); scene.collection.objects.link(ob)
     if p.get('subdiv', 0):
         md = ob.modifiers.new('Subdivision', 'SUBSURF'); md.levels = p['subdiv']; md.render_levels = p['subdiv']

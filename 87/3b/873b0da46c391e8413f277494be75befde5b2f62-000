@@ -39,9 +39,12 @@ for s in range(2, 17):
 # arch lips: the notch removes side rows r6..r8 between s0 and s1; lip = (s0,r8),(s0,r7),(s0,r6),(s0+1..s1-1,r6),(s1,r6),(s1,r7),(s1,r8)
 for name, a in ARCH.items():
     keys = [(a['s0'], 8), (a['s0'], 7), (a['s0'], 6)] + [(s, 6) for s in range(a['s0'] + 1, a['s1'])] + [(a['s1'], 6), (a['s1'], 7), (a['s1'], 8)]
+    step = math.radians(abs(a['a1'] - a['a0']) / (len(keys) - 1))
+    comp = 6.0 / (4.0 + 2.0 * math.cos(step))      # a creased subdivision curve shrinks a polygon by this factor: push the control points out
     for i, k in enumerate(keys):
         ang = math.radians(a['a0'] + (a['a1'] - a['a0']) * i / (len(keys) - 1))
-        P[k] = [a['xc'] + a['r'] * math.cos(ang), a['y'], a['zc'] + a['r'] * math.sin(ang)]
+        rr = a['r'] * (comp if 0 < i < len(keys) - 1 else 1.0)
+        P[k] = [a['xc'] + rr * math.cos(ang), a['y'], a['zc'] + rr * math.sin(ang)]
 spec = {
     'meta': {'version': 'V_001', 'date': '10 November 2026', 'units': 'wu = side-view pixel', 'metres_per_wu': 4.5 / 557.0},
     'arches': ARCH,

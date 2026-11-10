@@ -1,0 +1,10 @@
+#!/bin/zsh
+# 10 November 2026 14:40 - one command for one iteration: spec -> cage -> metrics -> Blender render -> compare sheet.
+# usage: Scripts/Run.sh V_001
+set -e
+cd "$(dirname "$0")/.."
+VER=$1
+python3 Scripts/Export.py Spec/$VER.json
+python3 Scripts/Overlay.py Spec/$VER.json
+/Applications/Blender.app/Contents/MacOS/Blender -b -P Scripts/BlenderSheet.py -- Out/car_$VER.json 2 2>&1 | grep -E "RENDER_DONE|Error|rror:" || true
+python3 Scripts/Compose.py $VER

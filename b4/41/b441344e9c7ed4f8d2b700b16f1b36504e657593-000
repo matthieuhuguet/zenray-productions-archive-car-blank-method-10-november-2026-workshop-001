@@ -7,7 +7,7 @@ import Build, Wheel
 
 def main(path):
     spec, V, F, tags, cr, idx, mi, vol = Build.build(path)
-    parts = {'body': {'verts': V.tolist(), 'faces': F, 'mats': tags, 'creases': [sorted(map(int, e)) for e in cr], 'subdiv': 2}}
+    parts = {'body': {'verts': V.tolist(), 'faces': F, 'mats': tags, 'creases': [sorted(map(int, e)) for e in cr], 'corners': Build.corner_verts(spec, idx, mi), 'subdiv': 2}}
     report = {'body': Build.topology_report(V, F)}
     for wname, w in spec['wheels'].items():
         for side, sname in ((1, 'L'), (-1, 'R')):
