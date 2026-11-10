@@ -1,0 +1,12 @@
+# 10 November 2026 15:05 - V_002 = V_001 + flat tail, rear face columns for the recessed panel, wheels flush inside the arches.
+import json
+s = json.load(open('Spec/V_001.json')); P = s['points']
+def put(st, pts):
+    for r, v in pts.items(): P[f'{st},{r}'] = [float(c) for c in v]
+put(17, {0: (552, 0, 117), 1: (552, 35, 117), 2: (551, 71, 117), 3: (549, 106, 117), 4: (547, 113, 116.5), 5: (549, 122, 106), 6: (550, 128, 90), 7: (549, 128, 64), 8: (544, 122, 33),
+         9: (547, 92, 31), 10: (549, 61, 30), 11: (550, 31, 30), 12: (550, 0, 30)})
+put(16, {2: (530, 60, 119), 3: (528, 80, 119.5), 4: (526, 96, 119.5), 5: (524, 113, 119)})
+s['rear_centre'] = [[553, 0, 107], [553, 0, 83], [552, 0, 59]]
+s['wheels']['front']['y_out'] = 132.0; s['wheels']['rear']['y_out'] = 133.5
+s['meta']['version'] = 'V_002'
+json.dump(s, open('Spec/V_002.json', 'w'), indent=0)

@@ -11,6 +11,10 @@ CREASE_RAILS = [2, 3, 4, 5, 8]
 CREASE_STATIONS = [(0, 0, 12), (17, 0, 12), (4, 0, 2), (8, 0, 2), (11, 0, 2), (15, 0, 2), (6, 3, 4), (12, 3, 4)]
 CORNERS = [(5, 2)]   # crease vertices that must stay a hard kink although only one crease line goes through them
 GLASS = [('windshield', 4, 8, 0, 2), ('roofglass', 11, 15, 0, 2), ('side', 6, 12, 3, 4)]  # name, s0, s1, r0, r1
+# insets: (material, selector, depth in wu). selector = ('grid', s0, s1, r0, r1) or ('cap', which, a0, a1, b0, b1), upper bounds excluded
+INSETS = [('glass_windshield', ('grid', 4, 8, 0, 2), 1.3), ('glass_roofglass', ('grid', 11, 15, 0, 2), 1.3),
+          ('glass_side', ('grid', 6, 8, 3, 4), 1.3), ('glass_side', ('grid', 8, 10, 3, 4), 1.3), ('glass_side', ('grid', 10, 12, 3, 4), 1.3),
+          ('panel_dark', ('cap', 'rear', 0, 3, 1, 3), 5.0)]
 
 def load(path):
     spec = json.load(open(path))
@@ -31,6 +35,7 @@ def coons(T, B, C, E):
 def build_half(spec, P):
     V, idx, F, tags = [], {}, [], []   # tags: per face material/part name
     extra = []                         # crease edges created here (arch lips, wheel-well rims), as index pairs
+    fkeys = []                         # one key per face, used by the inset selectors
     def vid(key, pos=None):
         if key not in idx:
             idx[key] = len(V); V.append(np.array(P[key] if pos is None else pos, float))
@@ -47,7 +52,7 @@ def build_half(spec, P):
     for s in range(NS - 1):
         for r in range(NR - 1):
             if (s, r) in removed: continue
-            F.append([vid((s, r)), vid((s + 1, r)), vid((s + 1, r + 1)), vid((s, r + 1))]); tags.append(mat(s, r))
+            F.append([vid((s, r)), vid((s + 1, r)), vid((s + 1, r + 1)), vid((s, r + 1))]); tags.append(mat(s, r)); fkeys.append(('grid', s, r))
     for name, a in arches.items():
         s0, s1, yw = a['s0'], a['s1'], a['ywall']
         def wall(s, r):
@@ -58,12 +63,12 @@ def build_half(spec, P):
                 top = P[(s, 6)].copy(); top[1] = yw; p = 0.5 * (top + P[(s, 9)])
             return vid(key, p)
         for s in range(s0, s1):
-            F.append([wall(s, 6), wall(s + 1, 6), wall(s + 1, 7), wall(s, 7)]); tags.append('wheelwell')
-            F.append([wall(s, 7), wall(s + 1, 7), vid((s + 1, 9)), vid((s, 9))]); tags.append('wheelwell')
+            F.append([wall(s, 6), wall(s + 1, 6), wall(s + 1, 7), wall(s, 7)]); tags.append('wheelwell'); fkeys.append(('ww',))
+            F.append([wall(s, 7), wall(s + 1, 7), vid((s + 1, 9)), vid((s, 9))]); tags.append('wheelwell'); fkeys.append(('ww',))
         lip = [(s0, 8), (s0, 7), (s0, 6)] + [(s, 6) for s in range(s0 + 1, s1)] + [(s1, 6), (s1, 7), (s1, 8)]
         wl = [vid((s0, 9)), wall(s0, 7), wall(s0, 6)] + [wall(s, 6) for s in range(s0 + 1, s1)] + [wall(s1, 6), wall(s1, 7), vid((s1, 9))]
         for i in range(len(lip) - 1):
-            F.append([vid(lip[i]), vid(lip[i + 1]), wl[i + 1], wl[i]]); tags.append('wheelwell')
+            F.append([vid(lip[i]), vid(lip[i + 1]), wl[i + 1], wl[i]]); tags.append('wheelwell'); fkeys.append(('ww',))
             extra.append((vid(lip[i]), vid(lip[i + 1]))); extra.append((wl[i], wl[i + 1]))
         for s in range(s0, s1): extra.append((vid((s, 9)), vid((s + 1, 9))))
     for cap, s, centre in (('front', 0, spec['front_centre']), ('rear', NS - 1, spec['rear_centre'])):
@@ -80,8 +85,43 @@ def build_half(spec, P):
             return vid(('cap', cap, a, b), G[a, b] if a else C[b])
         for a in range(n):
             for b in range(m):
-                F.append([cv(a, b), cv(a + 1, b), cv(a + 1, b + 1), cv(a, b + 1)]); tags.append('body')
-    return np.array(V), F, tags, idx, extra
+                F.append([cv(a, b), cv(a + 1, b), cv(a + 1, b + 1), cv(a, b + 1)]); tags.append('body'); fkeys.append(('cap', cap, a, b))
+    fkeys += [('other',)] * (len(F) - len(fkeys))
+    return np.array(V), F, tags, idx, extra, fkeys
+
+def selected(fkeys, sel):
+    out = []
+    for i, k in enumerate(fkeys):
+        if sel[0] == 'grid' and k[0] == 'grid' and sel[1] <= k[1] < sel[2] and sel[3] <= k[2] < sel[4]: out.append(i)
+        if sel[0] == 'cap' and k[0] == 'cap' and k[1] == sel[1] and sel[2] <= k[2] < sel[3] and sel[4] <= k[3] < sel[5]: out.append(i)
+    return out
+
+def inset(V, F, tags, fkeys, extra, faces, depth, material):
+    """Push a face set inward by `depth` along its vertex normals and bridge the step with a wall of quads.
+    Vertices on the symmetry plane stay on it. The faces must already be wound outward."""
+    from collections import defaultdict
+    V = [np.array(v, float) for v in V]; fs = set(faces)
+    nrm = defaultdict(lambda: np.zeros(3)); ecount = defaultdict(int)
+    for fi in fs:
+        f = F[fi]; p = np.array([V[i] for i in f]); n = np.cross(p[2] - p[0], p[3] - p[1]); n /= np.linalg.norm(n)
+        for k in range(4):
+            nrm[f[k]] += n; ecount[frozenset((f[k], f[(k + 1) % 4]))] += 1
+    new = {}
+    for v, n in nrm.items():
+        if abs(V[v][1]) < 1e-6: n = n * [1, 0, 1]
+        n = n / np.linalg.norm(n); new[v] = len(V); V.append(V[v] - depth * n)
+    for e, c in ecount.items():
+        a, b = tuple(e)
+        if c == 1 and not (abs(V[a][1]) < 1e-6 and abs(V[b][1]) < 1e-6):
+            F.append([a, b, new[b], new[a]]); tags.append('body' if material.startswith('glass') else material); fkeys.append(('wall',))
+            extra.append((a, b)); extra.append((new[a], new[b]))
+    for fi in fs:
+        F[fi] = [new[i] for i in F[fi]]; tags[fi] = material
+    return np.array(V), F, tags, fkeys, extra
+
+def compact(V, F, idx, extra):
+    used = sorted({i for f in F for i in f}); m = {o: n for n, o in enumerate(used)}
+    return V[used], [[m[i] for i in f] for f in F], {k: m[i] for k, i in idx.items() if i in m}, [(m[a], m[b]) for a, b in extra if a in m and b in m]
 
 def mirror(V, F, tags):
     on = np.abs(V[:, 1]) < 1e-6
@@ -150,7 +190,11 @@ def topology_report(V, F, creases=None):
 
 def build(path):
     spec, P = load(path)
-    Vh, Fh, th, idx, extra = build_half(spec, P)
+    Vh, Fh, th, idx, extra, fkeys = build_half(spec, P)
+    Fh, _ = orient_outward(Vh, Fh)
+    for material, sel, depth in INSETS:
+        Vh, Fh, th, fkeys, extra = inset(Vh, Fh, th, fkeys, extra, selected(fkeys, sel), depth, material)
+    Vh, Fh, idx, extra = compact(Vh, Fh, idx, extra)
     V, F, tags, mi = mirror(Vh, Fh, th)
     F, vol = orient_outward(V, F)
     cr = crease_edges(idx, mi, extra)

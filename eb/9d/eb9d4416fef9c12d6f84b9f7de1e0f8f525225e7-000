@@ -1,0 +1,159 @@
+{
+ "total": {
+  "verts": 2598,
+  "faces": 2588,
+  "quads": 2588,
+  "tris": 0,
+  "ngons": 0,
+  "boundary_edges": 0,
+  "nonmanifold_edges": 0
+ },
+ "parts": {
+  "body": {
+   "verts": 574,
+   "faces": 572,
+   "edges": 1144,
+   "quads": 572,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 60,
+    "4": 470,
+    "5": 36,
+    "6": 8
+   },
+   "unused_verts": 0
+  },
+  "tyre_front_L": {
+   "verts": 240,
+   "faces": 240,
+   "edges": 480,
+   "quads": 240,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 240
+   },
+   "unused_verts": 0
+  },
+  "rim_front_L": {
+   "verts": 266,
+   "faces": 264,
+   "edges": 528,
+   "quads": 264,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 32,
+    "4": 210,
+    "5": 24
+   },
+   "unused_verts": 0
+  },
+  "tyre_front_R": {
+   "verts": 240,
+   "faces": 240,
+   "edges": 480,
+   "quads": 240,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 240
+   },
+   "unused_verts": 0
+  },
+  "rim_front_R": {
+   "verts": 266,
+   "faces": 264,
+   "edges": 528,
+   "quads": 264,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 32,
+    "4": 210,
+    "5": 24
+   },
+   "unused_verts": 0
+  },
+  "tyre_rear_L": {
+   "verts": 240,
+   "faces": 240,
+   "edges": 480,
+   "quads": 240,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 240
+   },
+   "unused_verts": 0
+  },
+  "rim_rear_L": {
+   "verts": 266,
+   "faces": 264,
+   "edges": 528,
+   "quads": 264,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 32,
+    "4": 210,
+    "5": 24
+   },
+   "unused_verts": 0
+  },
+  "tyre_rear_R": {
+   "verts": 240,
+   "faces": 240,
+   "edges": 480,
+   "quads": 240,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 0,
+   "valence_hist": {
+    "4": 240
+   },
+   "unused_verts": 0
+  },
+  "rim_rear_R": {
+   "verts": 266,
+   "faces": 264,
+   "edges": 528,
+   "quads": 264,
+   "tris": 0,
+   "ngons": 0,
+   "boundary_edges": 0,
+   "nonmanifold_edges": 0,
+   "euler": 2,
+   "valence_hist": {
+    "3": 32,
+    "4": 210,
+    "5": 24
+   },
+   "unused_verts": 0
+  }
+ }
+}
