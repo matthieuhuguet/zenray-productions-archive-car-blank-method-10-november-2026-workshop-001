@@ -1,0 +1,53 @@
+# 10 November 2026 16:25 - the judge: silhouette overlap and contour distance of the model against each reference view.
+# usage: python3 Scripts/Score.py Spec/V_002.json [--parts shell|components] [--sheet]
+# EN: reference masks exclude the ground shadow (pixels only slightly darker than the background).
+import json, sys
+import numpy as np
+from PIL import Image, ImageDraw
+from scipy import ndimage as ndi
+sys.path.insert(0, 'Scripts')
+import Overlay_lib as OL
+
+def clean_mask(rgb):
+    g = rgb.astype(float).mean(2); bg = np.median(g)
+    m = (g > bg + 9) | (g < bg - 30)
+    m = ndi.binary_closing(m, iterations=3); m = ndi.binary_opening(m, iterations=1); m = ndi.binary_fill_holes(m)
+    lab, n = ndi.label(m); sizes = ndi.sum(m, lab, range(1, n + 1))
+    return lab == (int(np.argmax(sizes)) + 1)
+
+def ref_masks():
+    cal = json.load(open('Out/calibration.json')); sheet = np.asarray(Image.open('Ref/Car6Views.png').convert('RGB'))
+    out = {}
+    for name, c in cal.items():
+        x0, y0, x1, y1 = c['panel']; out[name] = clean_mask(sheet[y0:y1, x0:x1])
+    return out
+
+def contour(m): return m & ~ndi.binary_erosion(m)
+
+def score(parts, views, refs, names=None):
+    res = {}
+    for name in (names or OL.ORDER):
+        ref = refs[name]; mm = OL.parts_mask(parts, views[name], ref.shape)
+        iou = (ref & mm).sum() / (ref | mm).sum()
+        cr, cm = contour(ref), contour(mm)
+        d_rm = ndi.distance_transform_edt(~cm)[cr].mean(); d_mr = ndi.distance_transform_edt(~cr)[cm].mean()
+        res[name] = {'iou': round(float(iou), 4), 'contour_px': round(float((d_rm + d_mr) / 2), 2)}
+    res['mean_iou'] = round(float(np.mean([r['iou'] for r in res.values()])), 4)
+    return res
+
+if __name__ == '__main__':
+    import Model
+    spec = json.load(open(sys.argv[1])); views = json.load(open('Spec/Views.json')); refs = ref_masks()
+    parts = Model.shell_parts(spec)
+    res = score(parts, views, refs); print(json.dumps(res))
+    if '--sheet' in sys.argv:
+        tiles = []
+        for name in OL.ORDER:
+            ref = refs[name]; mm = OL.parts_mask(parts, views[name], ref.shape)
+            im = np.zeros(ref.shape + (3,), np.uint8) + 40
+            im[ref & mm] = (150, 150, 150); im[ref & ~mm] = (255, 60, 60); im[~ref & mm] = (60, 160, 255)
+            tiles.append(Image.fromarray(im))
+        Wd = max(t.size[0] for t in tiles); Hd = max(t.size[1] for t in tiles)
+        out = Image.new('RGB', (Wd * 2, Hd * 3), (20, 20, 20))
+        for i, t in enumerate(tiles): out.paste(t, ((i % 2) * Wd, (i // 2) * Hd))
+        out.save(f"Sheets/diff_{spec['meta']['version']}.png")

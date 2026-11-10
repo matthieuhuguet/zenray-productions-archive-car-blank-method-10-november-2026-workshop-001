@@ -1,0 +1,21 @@
+# 10 November 2026 16:20 - assemble the whole car as parts (dense body or components + wheels) for scoring and Blender.
+import json, sys
+import numpy as np
+sys.path.insert(0, 'Scripts')
+import Build, Lattice, Wheel
+
+def wheel_parts(spec):
+    parts = {}
+    for wname, w in spec['wheels'].items():
+        for side, sname in ((1, 'L'), (-1, 'R')):
+            for kind, (PV, PF) in (('tyre', Wheel.tyre(w['r'], w['rim'], w['width'])), ('rim', Wheel.rim(w['rim'], w['width']))):
+                A = Wheel.place(PV, w['x'], w['y_out'], w['z'], w['width'], side)
+                PF2, _ = Build.orient_outward(A, PF)
+                parts[f'{kind}_{wname}_{sname}'] = {'verts': A, 'faces': PF2, 'mat': kind}
+    return parts
+
+def shell_parts(spec, ks=4, kr=4):
+    V, F, fk, vol = Lattice.shell(spec, ks, kr)
+    parts = {'body': {'verts': V, 'faces': F, 'mat': 'body'}}
+    parts.update(wheel_parts(spec))
+    return parts

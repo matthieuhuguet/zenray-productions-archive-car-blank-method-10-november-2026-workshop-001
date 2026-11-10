@@ -1,0 +1,144 @@
+# 10 November 2026 16:00 - dense lattice WITHOUT any subdivision modifier: the coarse control lattice is resampled by
+# interpolating splines (the surface goes exactly through the control points, creases stay hard), then built as quads.
+# EN: ks = sub-steps per station interval, kr = sub-steps per rail interval. All feature indices scale with them.
+# FR : maillage dense sans subdivision ; la surface passe exactement par les points de controle.
+import json, math, sys
+import numpy as np
+sys.path.insert(0, 'Scripts')
+import Build
+
+NS, NR = 18, 13
+CREASE_RAILS = (2, 3, 4, 5, 8, 9)        # hard lines across a section
+KINK_DEG = 24.0                          # along a rail, a turn sharper than this stays a hard corner
+
+def hermite(P, corner, n, ghost0=None, ghost1=None):
+    """Interpolate a polyline P (m points) with n sub-steps per segment. corner[i] True = hard kink at point i.
+    Tangents are chord-length scaled, so nothing overshoots. Returns (m-1)*n+1 points."""
+    P = [np.asarray(p, float) for p in P]; m = len(P)
+    def tangent(i, seg):   # tangent at point i used for segment seg (seg = i or i-1)
+        a = P[i - 1] if i > 0 else ghost0
+        b = P[i + 1] if i < m - 1 else ghost1
+        if corner[i] or a is None or b is None:
+            d = P[seg + 1] - P[seg]
+        else:
+            d = b - a
+        L = np.linalg.norm(d)
+        return d / L * np.linalg.norm(P[seg + 1] - P[seg]) if L > 1e-9 else d * 0
+    out = [P[0]]
+    for s in range(m - 1):
+        m0, m1 = tangent(s, s), tangent(s + 1, s)
+        for j in range(1, n + 1):
+            t = j / n; t2, t3 = t * t, t * t * t
+            out.append((2 * t3 - 3 * t2 + 1) * P[s] + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * P[s + 1] + (t3 - t2) * m1)
+    return out
+
+def runs(keys):
+    out, cur = [], []
+    for k in keys:
+        if cur and k != cur[-1] + 1: out.append(cur); cur = []
+        cur.append(k)
+    if cur: out.append(cur)
+    return out
+
+def arch_path(a, ks, kr):
+    s0, s1 = a['s0'] * ks, a['s1'] * ks
+    return ([(s0, r) for r in range(8 * kr, 6 * kr - 1, -1)] + [(s, 6 * kr) for s in range(s0 + 1, s1 + 1)]
+            + [(s1, r) for r in range(6 * kr + 1, 8 * kr + 1)])
+
+def densify(spec, ks, kr):
+    P = {tuple(map(int, k.split(','))): np.array(v, float) for k, v in spec['points'].items()}
+    hard = {tuple(c) for c in spec.get('hard_points', [])}
+    D1 = {}
+    for r in range(NR):
+        for run in runs([s for s in range(NS) if (s, r) in P]):
+            pts = [P[(s, r)] for s in run]; corner = [True] * len(run)
+            for i in range(1, len(run) - 1):
+                u, v = pts[i] - pts[i - 1], pts[i + 1] - pts[i]
+                c = np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
+                corner[i] = (math.degrees(math.acos(max(-1, min(1, c)))) > KINK_DEG) or ((run[i], r) in hard)
+            for i, p in enumerate(hermite(pts, corner, ks)): D1[(run[0] * ks + i, r)] = p
+    D = {}
+    for sd in range((NS - 1) * ks + 1):
+        for run in runs([r for r in range(NR) if (sd, r) in D1]):
+            pts = [D1[(sd, r)] for r in run]
+            corner = [(r in CREASE_RAILS) or (r == 6 and (sd, 7) not in D1) for r in run]
+            g0 = pts[1] * [1, -1, 1] if run[0] == 0 and len(run) > 1 else None        # mirror ghost: smooth crown on the centreline
+            g1 = pts[-2] * [1, -1, 1] if run[-1] == NR - 1 and len(run) > 1 else None
+            if run[0] == 0: corner[0] = False
+            if run[-1] == NR - 1: corner[-1] = False
+            for i, p in enumerate(hermite(pts, corner, kr, g0, g1)): D[(sd, run[0] * kr + i)] = p
+    for a in spec['arches'].values():       # exact circle on the arch lip
+        path = arch_path(a, ks, kr)
+        for i, k in enumerate(path):
+            ang = math.radians(a['a0'] + (a['a1'] - a['a0']) * i / (len(path) - 1))
+            D[k] = np.array([a['xc'] + a['r'] * math.cos(ang), D[k][1], a['zc'] + a['r'] * math.sin(ang)])
+    return D
+
+def build_half(spec, ks=4, kr=4):
+    D = densify(spec, ks, kr)
+    V, idx, F, fk = [], {}, [], []
+    def vid(key, pos=None):
+        if key not in idx: idx[key] = len(V); V.append(np.array(D[key] if pos is None else pos, float))
+        return idx[key]
+    removed = set()
+    for a in spec['arches'].values():
+        for s in range(a['s0'] * ks, a['s1'] * ks):
+            for r in range(6 * kr, 9 * kr): removed.add((s, r))
+    for s in range((NS - 1) * ks):
+        for r in range((NR - 1) * kr):
+            if (s, r) in removed: continue
+            F.append([vid((s, r)), vid((s + 1, r)), vid((s + 1, r + 1)), vid((s, r + 1))]); fk.append(('grid', s // ks, r // kr, s, r))
+    for name, a in spec['arches'].items():
+        s0, s1, yw = a['s0'] * ks, a['s1'] * ks, a['ywall']; path = arch_path(a, ks, kr); n_up = 2 * kr
+        def wcopy(k): p = D[k].copy(); p[1] = yw; return p
+        left = [D[(s0, 9 * kr)]] + [wcopy(path[i]) for i in range(1, n_up + 1)]
+        right = [D[(s1, 9 * kr)]] + [wcopy(path[len(path) - 1 - i]) for i in range(1, n_up + 1)]
+        top = [wcopy(path[n_up + i]) for i in range(s1 - s0 + 1)]
+        bot = [D[(s, 9 * kr)] for s in range(s0, s1 + 1)]
+        G = Build.coons(bot, top, left, right)      # G[i][t], i along X, t from floor (0) to lip top (n_up)
+        def wv(i, t):
+            if t == 0: return vid((s0 + i, 9 * kr))
+            return vid(('w', name, i, t), G[i, t])
+        for i in range(s1 - s0):
+            for t in range(n_up):
+                F.append([wv(i, t), wv(i + 1, t), wv(i + 1, t + 1), wv(i, t + 1)]); fk.append(('wall', name))
+        wl = [wv(0, t) for t in range(0, n_up + 1)] + [wv(i, n_up) for i in range(1, s1 - s0 + 1)] + [wv(s1 - s0, t) for t in range(n_up - 1, -1, -1)]
+        def lv(i, j):      # liner node: path index i, depth j (0 = lip, kr = wall)
+            if j == 0: return vid(path[i])
+            if j == kr: return wl[i]
+            if i == 0: return vid((s0, 8 * kr + j))
+            if i == len(path) - 1: return vid((s1, 8 * kr + j))
+            return vid(('l', name, i, j), D[path[i]] + (V[wl[i]] - D[path[i]]) * j / kr)
+        for i in range(len(path) - 1):
+            for j in range(kr):
+                F.append([lv(i, j), lv(i + 1, j), lv(i + 1, j + 1), lv(i, j + 1)]); fk.append(('liner', name))
+    for cap, s, centre in (('front', 0, spec['front_centre']), ('rear', (NS - 1) * ks, spec['rear_centre'])):
+        T = [D[(s, r)] for r in range(0, 4 * kr + 1)]
+        E = [D[(s, r)] for r in range(4 * kr, 8 * kr + 1)]
+        B = [D[(s, r)] for r in range(12 * kr, 8 * kr - 1, -1)]
+        cp = [D[(s, 0)]] + [np.array(c, float) for c in centre] + [D[(s, 12 * kr)]]
+        C = hermite(cp, [False] * len(cp), kr)
+        G = Build.coons(T, B, C, E); n = 4 * kr
+        def cv(a, b):
+            if b == 0: return vid((s, a))
+            if a == n: return vid((s, 4 * kr + b))
+            if b == n: return vid((s, 12 * kr - a))
+            return vid(('cap', cap, a, b), G[a, b] if a else C[b])
+        for a in range(n):
+            for b in range(n):
+                F.append([cv(a, b), cv(a + 1, b), cv(a + 1, b + 1), cv(a, b + 1)]); fk.append(('cap', cap, a // kr, b // kr, a, b))
+    V = np.array(V)
+    F, _ = Build.orient_outward(V, F)
+    return V, F, fk, idx
+
+def shell(spec, ks=4, kr=4):
+    """Closed watertight body (both halves welded on the centreline): the proof that the base surface is sound."""
+    V, F, fk, idx = build_half(spec, ks, kr)
+    V2, F2, _, mi = Build.mirror(V, F, [0] * len(F))
+    F2, vol = Build.orient_outward(V2, F2)
+    return V2, F2, fk + fk, vol
+
+if __name__ == '__main__':
+    spec = json.load(open(sys.argv[1])); ks = int(sys.argv[2]) if len(sys.argv) > 2 else 4; kr = int(sys.argv[3]) if len(sys.argv) > 3 else 4
+    V, F, fk, vol = shell(spec, ks, kr)
+    print(json.dumps(Build.topology_report(V, F)))

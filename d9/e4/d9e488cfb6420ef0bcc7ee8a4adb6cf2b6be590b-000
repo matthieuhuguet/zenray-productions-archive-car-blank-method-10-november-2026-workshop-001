@@ -1,0 +1,24 @@
+# 10 November 2026 16:25 - shared projection helpers (one definition for the overlay, the score and the fit).
+import numpy as np
+from PIL import Image, ImageDraw
+ORDER = ['front', 'back', 'left', 'right', 'top', 'bottom']
+AX = {'x': 0, 'y': 1, 'z': 2}
+
+def project(V, view):
+    V = np.asarray(V, float); a = view['a']; h = view['h']
+    u = view['ox'] + (1 if h[1] == '+' else -1) * a * V[:, AX[h[0]]]
+    v = view['oy'] - a * V[:, AX[view['v']]]
+    k = view.get('persp', 0.0)        # optional perspective: scale shrinks with depth along the camera axis
+    if k:
+        ax = AX[view['cam'][0]]; sgn = 1 if view['cam'][1] == '+' else -1
+        depth = (view.get('d0', 0.0) - sgn * V[:, ax])          # distance behind the nearest plane
+        f = 1.0 / (1.0 + k * np.maximum(depth, 0))
+        u = view['ox'] + (u - view['ox']) * f; v = view['oy'] - (view['oy'] - v - view.get('zc', 0) * a) * f - view.get('zc', 0) * a
+    return np.stack([u, v], 1)
+
+def parts_mask(parts, view, shape):
+    im = Image.new('L', (shape[1], shape[0]), 0); dr = ImageDraw.Draw(im)
+    for p in parts.values():
+        uv = project(p['verts'], view)
+        for f in p['faces']: dr.polygon([tuple(uv[i]) for i in f], fill=255)
+    return np.asarray(im) > 0
